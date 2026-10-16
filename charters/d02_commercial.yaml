@@ -1,0 +1,33 @@
+charter_id: "chr-d02-commercial"
+department_id: "D02"
+title: "Sales & Commercial Partnerships"
+version: "v2.2"
+objectives:
+  - "Discover eligible broadcast, programmatic, and enterprise prospects"
+  - "Verify prospect identity and policy fit before any contact"
+  - "Maintain authoritative lead, opportunity, and quotation records in MCS-ERP"
+  - "Execute authorized outreach and track conversion to paid contracts"
+standing_triggers:
+  - trigger_type: "event"
+    event_type: "intelligence.signal.routed.v1"
+    name: "signal_lead_generation"
+  - trigger_type: "cron"
+    schedule: "0 8 * * 1-5"
+    name: "pipeline_review"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "crm.lead.upsert.v1"
+  - "crm.opportunity.upsert.v1"
+  - "crm.quotation.create_draft.v1"
+  - "campaign.create_direct.v1"
+  - "openrtb.dsp.onboard.v1"
+daily_budget_usd: 25.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Final contract execution"
+  - "Commercial exclusivity commitments"
+  - "Non-standard warranties"
+  - "Discounts or revenue shares outside approved policy"

@@ -1,0 +1,30 @@
+charter_id: "chr-d11-assurance"
+department_id: "D11"
+title: "Independent Assurance & Guardian Verifier"
+version: "v2.2"
+objectives:
+  - "Verify all 20 launch acceptance criteria (L01–L20) continuously"
+  - "Audit shared security controls, database role separation, and outbox state machine"
+  - "Monitor active service health and trigger bounded recovery runbooks on degraded signals"
+  - "Maintain independent qualification logs with zero waiver of required controls"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "*/10 * * * *" # Every 10 minutes assurance check
+    name: "continuous_assurance_audit"
+  - trigger_type: "event"
+    event_type: "system.health.degraded.v1"
+    name: "guardian_recovery_trigger"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "assurance.controls.audit.v1"
+  - "guardian.health.probe.v1"
+  - "guardian.recovery.runbook.execute.v1"
+daily_budget_usd: 20.0
+escalation_target: "principal_ceo"
+reserved_decisions:
+  - "Waiving failed acceptance criteria"
+  - "Granting launch authorization without 100% control qualification"
+  - "Overriding security role boundaries or audit trail logging"

@@ -1,0 +1,31 @@
+charter_id: "chr-d10-people-vendor"
+department_id: "D10"
+title: "People & Vendor Administration"
+version: "v2.2"
+objectives:
+  - "Maintain approved vendor and cloud subscription registers"
+  - "Track software and SaaS renewal dates, terms, and cost changes"
+  - "Generate draft purchase orders and vendor profiles in MCS-ERP Procurement"
+  - "Execute automated offboarding and credential revocation upon authorized instruction"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 9 * * 1" # Weekly Monday vendor review
+    name: "weekly_vendor_review"
+  - trigger_type: "event"
+    event_type: "vendor.renewal.due.v1"
+    name: "vendor_renewal_notification"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "procurement.supplier.upsert.v1"
+  - "procurement.purchase_order.create_draft.v1"
+  - "vendor.access.revoke.v1"
+daily_budget_usd: 10.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Hiring, termination, and employment contracts"
+  - "Compensation and equity adjustments"
+  - "Binding new vendor master services agreements"
+  - "Approving new subscriptions above standing threshold"

@@ -1,0 +1,30 @@
+charter_id: "chr-d08-venture"
+department_id: "D08"
+title: "Venture & Product Development"
+version: "v2.2"
+objectives:
+  - "Scan Demand Radar signals across African digital solutions markets"
+  - "Synthesize evidence-backed venture briefs with explicit market and unit economics models"
+  - "Scaffold approved ventures and tenant apps in staging environments upon principal greenlight"
+  - "Integrate corporate operating services into newly launched ventures"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 10 * * 1" # Monday 10:00 weekly venture scan
+    name: "weekly_demand_radar_scan"
+  - trigger_type: "event"
+    event_type: "venture.greenlight.approved.v1"
+    name: "venture_scaffolding_trigger"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "venture.brief.generate.v1"
+  - "venture.scaffold.execute.v1"
+daily_budget_usd: 20.0
+escalation_target: "coo"
+reserved_decisions:
+  - "New venture incubation greenlight"
+  - "Commercial production launch"
+  - "Product capital allocation changes"
+  - "Commercial commitments to external partners"

@@ -1,0 +1,30 @@
+charter_id: "chr-d03-cmo"
+department_id: "D03"
+title: "Marketing & Communications (CMO)"
+version: "v2.2"
+objectives:
+  - "Compose grounded promotional and factual content strictly bound to verified source citations"
+  - "Publish approved insights and fact-checks across social channels, websites, and newsletter feeds"
+  - "Measure engagement and inbound conversion metrics"
+  - "Execute immediate correction or retraction workflows upon source invalidation"
+standing_triggers:
+  - trigger_type: "event"
+    event_type: "content.insight.ready.v1"
+    name: "content_publication_trigger"
+  - trigger_type: "event"
+    event_type: "compliance.retraction.ordered.v1"
+    name: "immediate_content_retraction"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "content.social.publish.v1"
+  - "content.editorial.publish.v1"
+  - "content.correction.withdraw.v1"
+daily_budget_usd: 20.0
+escalation_target: "coo"
+reserved_decisions:
+  - "New public commitments or corporate positions"
+  - "Crisis communications and sensitive allegations"
+  - "Unapproved brand advertising campaigns or ad spend"

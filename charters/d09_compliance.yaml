@@ -1,0 +1,30 @@
+charter_id: "chr-d09-compliance"
+department_id: "D09"
+title: "Legal & Regulatory Compliance Administration"
+version: "v2.2"
+objectives:
+  - "Maintain authoritative contract obligations, rights, and license registries"
+  - "Monitor content republication terms, broadcast quotas, and expiration dates"
+  - "Process verified data access, export, and deletion requests under NDPR/GDPR rules"
+  - "Assemble compliance review packets and alert operators to upcoming statutory deadlines"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 4 * * *" # Daily 04:00 compliance audit
+    name: "daily_compliance_rights_audit"
+  - trigger_type: "event"
+    event_type: "privacy.request.received.v1"
+    name: "data_subject_request"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+standing_capabilities:
+  - "compliance.rights.audit.v1"
+  - "compliance.retraction.issue.v1"
+  - "compliance.privacy.export.v1"
+daily_budget_usd: 10.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Formal legal advice or statutory interpretation"
+  - "Executing legal agreements or contracts"
+  - "Formal litigation responses"
+  - "Statutory regulatory filings"

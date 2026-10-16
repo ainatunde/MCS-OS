@@ -1,0 +1,29 @@
+charter_id: "chr-d04-intelligence"
+department_id: "D04"
+title: "Intelligence & Research"
+version: "v2.2"
+objectives:
+  - "Observe approved data feeds, official gazettes, and broadcast schedules"
+  - "Normalize incoming evidence with verified time, entity, and coordinate resolution"
+  - "Produce grounded briefs with cryptographic citation triples"
+  - "Route actionable leads to D02 (Commercial) and market demand to D08 (Venture)"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 */2 * * *" # Every 2 hours
+    name: "scheduled_source_ingestion"
+  - trigger_type: "event"
+    event_type: "source.feed.updated.v1"
+    name: "event_driven_ingestion"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+standing_capabilities:
+  - "intelligence.signal.route.v1"
+  - "intelligence.radar.collect.v1"
+  - "claims.verify.v1"
+daily_budget_usd: 15.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Adding new unreviewed data sources"
+  - "Prohibited scraping or terms-of-service bypass"
+  - "Material expansion of retained personal data"

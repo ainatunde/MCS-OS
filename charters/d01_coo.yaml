@@ -1,0 +1,31 @@
+charter_id: "chr-d01-coo"
+department_id: "D01"
+title: "Executive Operations & COO"
+version: "v2.2"
+objectives:
+  - "Observe portfolio product state across all 7 registered ventures and shared ERP"
+  - "Prioritize operational tasks within approved strategy"
+  - "Deliver the authoritative 07:30 WAT executive briefing"
+  - "Track deadline exceptions and unresolved obligations"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 6:30 * * *" # 06:30 UTC = 07:30 WAT
+    name: "morning_executive_briefing"
+  - trigger_type: "event"
+    event_type: "system.incident.created.v1"
+    name: "incident_prioritization"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "coo.briefing.compile.v1"
+  - "coo.task.prioritize.v1"
+  - "coo.exception.escalate.v1"
+daily_budget_usd: 15.0
+escalation_target: "principal_ceo"
+reserved_decisions:
+  - "Company strategy modification"
+  - "Product closure or wind-down"
+  - "Capital allocation changes"
+  - "Policy changes"

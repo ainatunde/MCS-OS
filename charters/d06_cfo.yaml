@@ -1,0 +1,34 @@
+charter_id: "chr-d06-cfo"
+department_id: "D06"
+title: "Finance & Treasury Operations (CFO)"
+version: "v2.2"
+objectives:
+  - "Ingest usage and ad-delivery metrics across VCP, Forge, ADS, and ADX"
+  - "Calculate deterministic monthly billing and rev-share splits"
+  - "Synchronize authoritative customer balances, draft invoices, and payments in MCS-ERP"
+  - "Track actual versus reserved cloud infrastructure and AI model spend"
+standing_triggers:
+  - trigger_type: "cron"
+    schedule: "0 1 1 * *" # 1st of month monthly billing
+    name: "monthly_billing_rollup"
+  - trigger_type: "cron"
+    schedule: "0 0 * * *" # Daily reconciliation
+    name: "daily_reconciliation_check"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "finance.customer.upsert.v1"
+  - "finance.invoice.create_draft.v1"
+  - "finance.invoice.submit_a2.v1"
+  - "finance.payment.record_draft.v1"
+  - "finance.reconciliation.verify.v1"
+daily_budget_usd: 10.0
+escalation_target: "coo"
+reserved_decisions:
+  - "External treasury bank transfers"
+  - "Adding new vendor payment beneficiaries"
+  - "Statutory tax filings"
+  - "Bad debt write-offs"
+  - "Payment terms exceeding standard policy limits"

@@ -1,0 +1,32 @@
+charter_id: "chr-d05-cto"
+department_id: "D05"
+title: "Technology, Engineering & Reliability (CTO)"
+version: "v2.2"
+objectives:
+  - "Monitor continuous integration pipelines across all portfolio products"
+  - "Triage and isolate test failures, regressions, and runtime exceptions"
+  - "Execute automated staging PR testing and pre-authorized runbook rollouts"
+  - "Maintain zero-defect schema migrations, isolation boundaries, and failovers"
+standing_triggers:
+  - trigger_type: "event"
+    event_type: "ci.pipeline.failed.v1"
+    name: "ci_failure_triage"
+  - trigger_type: "event"
+    event_type: "system.health.degraded.v1"
+    name: "reliability_incident_triage"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "engineering.ci.verify.v1"
+  - "engineering.release.deploy_staging.v1"
+  - "engineering.runbook.execute.v1"
+  - "schedule.feed.sync.v1"
+daily_budget_usd: 30.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Breaking API contract migrations"
+  - "Destructive production database migrations"
+  - "New infrastructure commitments"
+  - "Exceptions to security or access control policies"

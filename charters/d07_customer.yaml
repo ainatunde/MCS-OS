@@ -1,0 +1,33 @@
+charter_id: "chr-d07-customer"
+department_id: "D07"
+title: "Customer Success & Operations"
+version: "v2.2"
+objectives:
+  - "Ingest broadcaster and subscriber support tickets within strict tenant isolation"
+  - "Enforce rapid SLA standards (2-minute initial response, 15-minute resolution for P1)"
+  - "Maintain authoritative ticket history and resolution tracking in MCS-ERP Support"
+  - "Perform verified account operations, stream diagnostics, and policy-compliant assistance"
+standing_triggers:
+  - trigger_type: "event"
+    event_type: "support.ticket.received.v1"
+    name: "incoming_support_ticket"
+  - trigger_type: "cron"
+    schedule: "*/5 * * * *" # Every 5 minutes SLA check
+    name: "sla_deadline_monitor"
+authorized_action_classes:
+  - "A0"
+  - "A1"
+  - "A2"
+standing_capabilities:
+  - "support.issue.create.v1"
+  - "support.issue.update_status.v1"
+  - "support.ticket.triage.v1"
+  - "support.subscriber.help.v1"
+  - "stream.diagnose.v1"
+daily_budget_usd: 20.0
+escalation_target: "coo"
+reserved_decisions:
+  - "Customer refunds outside standing policy limits"
+  - "Identity authentication bypasses"
+  - "Contractual compensation promises"
+  - "Service level agreement exceptions"
