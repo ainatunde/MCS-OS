@@ -263,7 +263,7 @@ ENV_ERP_JSON=$(jq -nc \
     DB_ROOT_PASSWORD: $dbpw,
     ADMIN_PASSWORD: $adm,
     HTTP_BIND: "127.0.0.1",
-    HTTP_PORT: "8080",
+    HTTP_PORT: "8085",
     FRAPPE_WORKERS: $fw,
     DB_BUFFER_POOL: $bp,
     UPSTREAM_REAL_IP_ADDRESS: "172.16.0.0/12",
