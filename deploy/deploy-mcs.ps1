@@ -12,7 +12,7 @@
 #>
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory=$false)] [string] $SecretsFile = "$PSScriptRoot\mcs-deploy.secrets.env",
+  [string] $SecretsFile,
   [string] $SshKey = "$env:USERPROFILE\.ssh\tvinsights_vps",
   [string] $Python = "python",
   [string] $GithubRepoOS = "ainatunde/MCS-OS",
@@ -22,7 +22,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $here) { $here = (Get-Location).Path }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
+
+if (-not $SecretsFile) {
+  $candidate = Join-Path $here "mcs-deploy.secrets.env"
+  if (Test-Path $candidate) {
+    $SecretsFile = $candidate
+  } else {
+    $SecretsFile = ".\mcs-deploy.secrets.env"
+  }
+}
 
 if (-not (Test-Path $SecretsFile)) {
   throw "Secrets file not found: $SecretsFile. Copy mcs-deploy.secrets.env.example to $SecretsFile and fill in credentials."
@@ -97,17 +107,17 @@ Write-Host "==> Verifying SSH connectivity to $target..." -ForegroundColor Cyan
 $ErrorActionPreference = "Continue"
 & ssh @sshOpts $target "true" 2>$null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "SSH key connection failed. Attempting fallback keys..." -ForegroundColor Yellow
-  # Try default ~/.ssh/id_rsa or id_ed25519
-  $fallbackKey = "$env:USERPROFILE\.ssh\id_ed25519"
-  if (-not (Test-Path $fallbackKey)) { $fallbackKey = "$env:USERPROFILE\.ssh\id_rsa" }
-  if (Test-Path $fallbackKey) {
-    $sshOpts[1] = $fallbackKey
-    & ssh @sshOpts $target "true" 2>$null
+  Write-Host "Key login failed. Attempting SSH key bootstrap with root password..." -ForegroundColor Yellow
+  if (-not $cfg.VPS_ROOT_PASSWORD) { throw "Key login failed and VPS_ROOT_PASSWORD is empty." }
+  $env:VPS_IP = $cfg.VPS_IP; $env:VPS_SSH_PORT = $port; $env:VPS_SSH_USER = $user; $env:VPS_ROOT_PASSWORD = $cfg.VPS_ROOT_PASSWORD
+  try {
+    & $Python "$here\bootstrap_ssh_key.py" "$SshKey.pub"
+    if ($LASTEXITCODE -ne 0) { throw "key bootstrap failed" }
+  } finally {
+    Remove-Item Env:VPS_ROOT_PASSWORD -ErrorAction SilentlyContinue
   }
-  if ($LASTEXITCODE -ne 0) {
-    throw "Unable to authenticate to $target via SSH. Check your SSH key path or network."
-  }
+  & ssh @sshOpts $target "true"
+  if ($LASTEXITCODE -ne 0) { throw "Key login still failing after bootstrap" }
 }
 $ErrorActionPreference = "Stop"
 Write-Host "SSH connection OK." -ForegroundColor Green

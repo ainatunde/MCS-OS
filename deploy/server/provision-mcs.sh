@@ -14,7 +14,7 @@ ENV_FILE=${1:-/root/mcs-deploy.env}
 source "$ENV_FILE"
 
 : "${CF_API_TOKEN:?}" "${CF_ACCOUNT_ID:?}" "${CF_ZONE_DOMAIN:?}"
-: "${OS_HOSTNAME:?}" "${ERP_HOSTNAME:?}" "${TUNNEL_NAME:=tvinsights-coolify}"
+: "${OS_HOSTNAME:?}" "${ERP_HOSTNAME:?}" "${COMMAND_HOSTNAME:=command.mcsolutions.stream}" "${TUNNEL_NAME:=tvinsights-coolify}"
 : "${GITHUB_TOKEN:?}" "${GITHUB_REPO_OS:?}" "${GITHUB_REPO_ERP:?}" "${GIT_BRANCH:=main}"
 : "${POSTGRES_PASSWORD:?}" "${DB_ROOT_PASSWORD:?}" "${ADMIN_PASSWORD:?}"
 : "${MCS_CONTROL_API_TOKEN:?}" "${MCS_WEBHOOK_SECRET:?}"
@@ -119,11 +119,13 @@ CURRENT_INGRESS=$(jq '.result.config.ingress // []' <<< "$CURRENT_CFG")
 NEW_INGRESS=$(jq -nc \
   --argjson curr "$CURRENT_INGRESS" \
   --arg os "$OS_HOSTNAME" \
-  --arg erp "$ERP_HOSTNAME" '
-  ($curr | map(select(.hostname != $os and .hostname != $erp and .service != "http_status:404")))
+  --arg erp "$ERP_HOSTNAME" \
+  --arg cmd "$COMMAND_HOSTNAME" '
+  ($curr | map(select(.hostname != $os and .hostname != $erp and .hostname != $cmd and .service != "http_status:404")))
   + [
       {hostname: $os, service: "http://localhost:80"},
-      {hostname: $erp, service: "http://localhost:80"}
+      {hostname: $erp, service: "http://localhost:80"},
+      {hostname: $cmd, service: "http://localhost:80"}
     ]
   + [{service: "http_status:404"}]
 ')
@@ -147,6 +149,7 @@ dns_upsert() {
 log "DNS Records Upsert"
 dns_upsert "$OS_HOSTNAME" "$ZONE_ID"
 dns_upsert "$ERP_HOSTNAME" "$ZONE_ID"
+dns_upsert "$COMMAND_HOSTNAME" "$ZONE_ID"
 
 # ---------- 4. GitHub Deploy Key for MCS Repositories ----------
 log "GitHub Deploy Key validation"
@@ -216,9 +219,10 @@ ENV_OS_JSON=$(jq -nc \
   --arg env "production" \
   --arg token "$MCS_CONTROL_API_TOKEN" \
   --arg hmac "$MCS_WEBHOOK_SECRET" \
-  --arg cors "https://$OS_HOSTNAME,https://$ERP_HOSTNAME" \
+  --arg cors "https://$OS_HOSTNAME,https://$ERP_HOSTNAME,https://$COMMAND_HOSTNAME" \
   --arg dbpw "$POSTGRES_PASSWORD" \
-  --arg erpurl "https://$ERP_HOSTNAME" '
+  --arg erpurl "https://$ERP_HOSTNAME" \
+  --arg osurl "https://$OS_HOSTNAME" '
   {
     MCS_OS_ENV: $env,
     MCS_OS_AUTH_REQUIRED: "1",
@@ -231,11 +235,21 @@ ENV_OS_JSON=$(jq -nc \
     POSTGRES_DB: "mcs_os",
     ERPNEXT_URL: $erpurl,
     HTTP_BIND: "127.0.0.1",
-    HTTP_PORT: "8090"
+    HTTP_PORT: "8090",
+    FRONTEND_PORT: "3090",
+    NEXT_PUBLIC_API_URL: $osurl
   } | to_entries | {data: map({key, value, is_preview:false})}')
 co PATCH "/applications/$APP_OS_UUID/envs/bulk" "$ENV_OS_JSON" >/dev/null
 
-PATCH_OS_DOMAINS=$(jq -nc --arg d "http://$OS_HOSTNAME:8000" '{docker_compose_domains:[{name:"control-api", domain:$d}]}')
+PATCH_OS_DOMAINS=$(jq -nc \
+  --arg api "http://$OS_HOSTNAME:8000" \
+  --arg cmd "http://$COMMAND_HOSTNAME:3000" '
+  {
+    docker_compose_domains: [
+      {name: "control-api", domain: $api},
+      {name: "command-centre", domain: $cmd}
+    ]
+  }')
 co PATCH "/applications/$APP_OS_UUID" "$PATCH_OS_DOMAINS" >/dev/null 2>&1 || true
 
 # --- 5b. MCS-ERP Application ---

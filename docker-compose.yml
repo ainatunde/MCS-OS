@@ -19,6 +19,24 @@ services:
       db:
         condition: service_healthy
 
+  command-centre:
+    build:
+      context: apps/command-centre
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://os.mcsolutions.stream}
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${FRONTEND_PORT:-3090}:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    depends_on:
+      - control-api
+
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
