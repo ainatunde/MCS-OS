@@ -38,6 +38,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+*.secrets.env
 
 # Next.js / Node
 apps/command-centre/node_modules/
