@@ -164,12 +164,25 @@ fi
 
 # Ensure deploy key is authorized in both repos
 for repo in "$GITHUB_REPO_OS" "$GITHUB_REPO_ERP"; do
-  if ! gh GET "/repos/$repo/keys" | jq -e --arg k "$PUBKEY" 'any(.[]; .key==$k)' >/dev/null 2>&1; then
-    gh POST "/repos/$repo/keys" "$(jq -nc --arg k "$PUBKEY" --arg t "coolify-mcs@$(hostname)" \
-      '{title:$t, key:$k, read_only:true}')" >/dev/null
-    echo "Deploy key added to $repo"
+  log "Verifying git access for $repo..."
+  if GIT_SSH_COMMAND="ssh -i $KEYFILE -o StrictHostKeyChecking=accept-new -o BatchMode=yes" git ls-remote "git@github.com:$repo.git" HEAD >/dev/null 2>&1; then
+    echo "SSH access verified for $repo."
+  elif git ls-remote "https://github.com/$repo.git" HEAD >/dev/null 2>&1 && [[ "$repo" == "$GITHUB_REPO_OS" ]]; then
+    echo "Public HTTPS access verified for $repo."
   else
-    echo "Deploy key already present in $repo"
+    echo "Attempting to register deploy key via GitHub API for $repo..."
+    if ! gh POST "/repos/$repo/keys" "$(jq -nc --arg k "$PUBKEY" --arg t "coolify-mcs@$(hostname)" '{title:$t, key:$k, read_only:true}')" >/dev/null 2>&1; then
+      warn "Could not add deploy key automatically via GitHub PAT (token lacks permissions on $repo)."
+      warn "Please add this deploy key manually to GitHub: https://github.com/$repo/settings/keys"
+      warn "Public Key:"
+      echo "$PUBKEY"
+      warn "Checking if git access is active..."
+      if ! GIT_SSH_COMMAND="ssh -i $KEYFILE -o StrictHostKeyChecking=accept-new -o BatchMode=yes" git ls-remote "git@github.com:$repo.git" HEAD >/dev/null 2>&1; then
+        die "Access denied to git@github.com:$repo.git. Please add the public key above to https://github.com/$repo/settings/keys or to your GitHub account (https://github.com/settings/keys) and re-run."
+      fi
+    else
+      echo "Deploy key added to $repo."
+    fi
   fi
 done
 
