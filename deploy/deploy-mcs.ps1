@@ -15,7 +15,7 @@ param(
   [Parameter(Mandatory=$false)] [string] $SecretsFile = "$PSScriptRoot\mcs-deploy.secrets.env",
   [string] $SshKey = "$env:USERPROFILE\.ssh\tvinsights_vps",
   [string] $Python = "python",
-  [string] $GithubRepoOS = "ainatunde/mcs-os",
+  [string] $GithubRepoOS = "ainatunde/MCS-OS",
   [string] $GithubRepoERP = "ainatunde/MCS-ERP",
   [string] $GitBranch = "main"
 )
