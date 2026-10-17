@@ -306,12 +306,20 @@ co PATCH "/applications/$APP_OS_UUID" "$PATCH_OS_DOMAINS" >/dev/null 2>&1 || tru
 co PATCH "/applications/$APP_ERP_UUID" "$PATCH_ERP_DOMAINS" >/dev/null 2>&1 || true
 
 # ---------- 7. Day-1 ERPNext Site Initialization ----------
-log "Checking Frappe Site Status"
-sleep 5
-ERP_BACKEND=$(docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" | grep -E "(mcs-erp|$APP_ERP_UUID)" | head -n1 || docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" | head -n1)
+log "Waiting for Frappe backend container to become ready..."
+ERP_BACKEND=""
+for _ in $(seq 1 20); do
+  ERP_BACKEND=$(docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" | grep -E "(mcs-erp|$APP_ERP_UUID)" | head -n1 || true)
+  if [[ -z $ERP_BACKEND ]]; then
+    ERP_BACKEND=$(docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" | head -n1 || true)
+  fi
+  [[ -n $ERP_BACKEND ]] && break
+  printf '.'; sleep 3
+done
+echo ""
 
 if [[ -z $ERP_BACKEND ]]; then
-  warn "ERP backend container not detected yet. Skipping automatic bench new-site."
+  warn "ERP backend container not detected yet after 60s. Skipping automatic bench new-site."
   warn "Run manually once container settles: docker exec -it <backend> bench new-site $ERP_HOSTNAME"
 else
   if docker exec "$ERP_BACKEND" test -d "sites/$ERP_HOSTNAME"; then
