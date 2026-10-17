@@ -46,3 +46,37 @@ def test_revocations_and_least_privilege_grants():
     assert "GRANT EXECUTE ON FUNCTION fn_policy_promote_ready TO mcs_policy_role" in POSTGRES_SCHEMA_SQL
     # Executor only gets EXECUTE on claim_and_lease
     assert "GRANT EXECUTE ON FUNCTION fn_executor_claim_and_lease TO mcs_executor_role" in POSTGRES_SCHEMA_SQL
+    # Ingress role grants
+    assert "GRANT SELECT, INSERT ON os_inbox_events TO mcs_ingress_role" in POSTGRES_SCHEMA_SQL
+    # Approver role grants
+    assert "GRANT SELECT, INSERT, UPDATE ON os_approvals TO mcs_approver_role" in POSTGRES_SCHEMA_SQL
+
+
+def test_schema_includes_all_nine_tables_and_rls():
+    tables = [
+        "os_products",
+        "os_departments",
+        "os_agent_charters",
+        "os_inbox_events",
+        "os_tasks",
+        "os_action_outbox",
+        "os_approvals",
+        "os_budgets",
+        "os_audit_events",
+    ]
+    for table in tables:
+        assert f"CREATE TABLE IF NOT EXISTS {table}" in POSTGRES_SCHEMA_SQL
+
+    assert "ALTER TABLE os_action_outbox ENABLE ROW LEVEL SECURITY" in POSTGRES_SCHEMA_SQL
+    assert "ALTER TABLE os_tasks ENABLE ROW LEVEL SECURITY" in POSTGRES_SCHEMA_SQL
+    assert "ALTER TABLE os_approvals ENABLE ROW LEVEL SECURITY" in POSTGRES_SCHEMA_SQL
+
+
+def test_schema_roles_have_no_cleartext_passwords():
+    assert "change_in_production" not in POSTGRES_SCHEMA_SQL
+    assert "PASSWORD" not in POSTGRES_SCHEMA_SQL
+
+
+def test_reconciler_settle_outcome_preserves_dispatched_at():
+    assert "fn_reconciler_settle_outcome" in POSTGRES_SCHEMA_SQL
+    assert "dispatched_at = COALESCE(dispatched_at, clock_timestamp())" in POSTGRES_SCHEMA_SQL

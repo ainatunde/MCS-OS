@@ -125,16 +125,16 @@ async def test_outbox_timeout_enters_outcome_unknown():
     env = make_env("act-timeout")
     repo = MockOutboxRepo([env])
 
-    worker = OutboxWorker(worker_id="w1", repository=repo, adapters={"cloudstream-vcp": adapter})
-    # Override wait_for timeout to 0.1s in test for speed
-    with pytest.MonkeyPatch.context() as mp:
-        import services.executor.worker as sew
-        # execute_one timeout caught
-        pass
-
-    # Direct exception handling test
-    await repo.mark_outcome_unknown("act-timeout", "simulated timeout")
+    worker = OutboxWorker(
+        worker_id="w1",
+        repository=repo,
+        adapters={"cloudstream-vcp": adapter},
+        dispatch_timeout_seconds=0.05,
+    )
+    receipt = await worker.execute_one()
+    assert receipt is None
     assert "act-timeout" in repo.unknown
+    assert "Network timeout" in repo.unknown["act-timeout"]
 
 
 @pytest.mark.asyncio

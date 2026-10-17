@@ -114,3 +114,60 @@ def test_get_briefings(client):
     data = resp.json()
     assert data["count"] > 0
     assert "07:30 WAT" in data["briefings"][0]["scheduled_time"]
+
+
+def test_approve_content_does_not_release_queue(client):
+    payload = {"beneficiary": "Content Studio", "amount_usd": 5000.0}
+    env = ActionEnvelope(
+        action_id="act-a3-content-only",
+        task_id="tsk-cmo-002",
+        charter_id="chr-d03-cmo",
+        department_id="D06",
+        product_slug="corporate",
+        action_type="finance.treasury_transfer.v1",
+        authority_class=AuthorityClass.A3,
+        payload=payload,
+        canonical_payload_hash=canonical_payload_hash(payload),
+        idempotency_key="idem-a3-content-only",
+    )
+    client.post("/v1/action-intents", json=env.model_dump(mode="json"))
+
+    decide_resp = client.post(
+        "/v1/approvals/act-a3-content-only/decide",
+        json={"decision": "approve_content", "actor": "founder_ceo"},
+    )
+    assert decide_resp.status_code == 200
+    assert decide_resp.json()["status"] == "content_approved"
+    assert decide_resp.json()["action_status"] == "content_approved"
+
+
+def test_production_auth_and_rbac_enforced(client, monkeypatch):
+    monkeypatch.setenv("MCS_OS_AUTH_REQUIRED", "1")
+    monkeypatch.setenv("MCS_CONTROL_API_TOKEN", "secret-control-token")
+
+    # Unauthenticated request is rejected with 401
+    unauth = client.get("/v1/products")
+    assert unauth.status_code == 401
+
+    # Authenticated request with valid Bearer token succeeds
+    auth_headers = {"Authorization": "Bearer secret-control-token"}
+    ok = client.get("/v1/products", headers=auth_headers)
+    assert ok.status_code == 200
+
+    # Non-principal actor cannot trigger emergency halt in enforced mode
+    non_principal = client.post(
+        "/v1/halts",
+        json={"scope": "aether-ads", "reason": "test"},
+        headers={**auth_headers, "X-MCS-Actor": "junior_operator"},
+    )
+    assert non_principal.status_code == 403
+
+    # Principal actor can register and lift halt
+    principal_headers = {**auth_headers, "X-MCS-Actor": "founder_ceo"}
+    halt_ok = client.post(
+        "/v1/halts",
+        json={"scope": "aether-ads", "reason": "test"},
+        headers=principal_headers,
+    )
+    assert halt_ok.status_code == 201
+    client.delete("/v1/halts/aether-ads", headers=principal_headers)

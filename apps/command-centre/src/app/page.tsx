@@ -1,11 +1,13 @@
+'use client';
+
 /**
- * MCS-OS Executive Command Centre Dashboard (MCS-OS v2.2 §4 & §7).
+ * MCS-OS Executive Command Centre — Next.js 14 Dashboard (MCS-OS v2.2 W10).
  *
- * Implements:
- *   1. Portfolio Coverage Matrix across 7 products + MCS-ERP
- *   2. Decision Inbox with distinct "Approve Content" vs "Approve & Send"
- *   3. NGN / USD Real-Time Financial Ledger & AI Spend Burn
- *   4. Emergency Halt & Bounded SRE Recovery Console
+ * Surfaces:
+ *   1. 07:30 WAT Executive Briefing & Portfolio Health (7 Products + ERPNext)
+ *   2. Decision Inbox (Approve Content vs Approve & Send vs Deny)
+ *   3. Emergency Halt Controls (Company-Wide & Per-Product Kill Switches)
+ *   4. Guardian Watchdog Incidents & Recovery Runbook Audit Trail
  */
 
 import React, { useState, useEffect } from 'react';

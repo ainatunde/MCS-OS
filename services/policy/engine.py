@@ -11,8 +11,7 @@ Governed by MCS-OS Master Specification v2.2 Section 5:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from contracts.actions.envelope import ActionEnvelope, AuthorityClass, canonical_payload_hash
 
@@ -34,17 +33,25 @@ ACTION_CATALOG: Dict[str, PolicyRule] = {
     "intelligence.radar.collect.v1": PolicyRule("intelligence.radar.collect.v1", "D04", AuthorityClass.A0),
     "telemetry.read.v1": PolicyRule("telemetry.read.v1", "D05", AuthorityClass.A0),
     "stream.diagnose.v1": PolicyRule("stream.diagnose.v1", "D05", AuthorityClass.A0),
+    "adbreak.telemetry.read.v1": PolicyRule("adbreak.telemetry.read.v1", "D05", AuthorityClass.A0),
+    "app.experience_bus.diagnose.v1": PolicyRule("app.experience_bus.diagnose.v1", "D05", AuthorityClass.A0),
+    "adserving.health.read.v1": PolicyRule("adserving.health.read.v1", "D05", AuthorityClass.A0),
+    "openrtb.auction.telemetry.read.v1": PolicyRule("openrtb.auction.telemetry.read.v1", "D05", AuthorityClass.A0),
     "tenant.manifest.read.v1": PolicyRule("tenant.manifest.read.v1", "D01", AuthorityClass.A0),
     "guardian.health.probe.v1": PolicyRule("guardian.health.probe.v1", "D11", AuthorityClass.A0),
     "venture.research.v1": PolicyRule("venture.research.v1", "D08", AuthorityClass.A0),
 
     # A1 Routine internal
     "coo.briefing.compile.v1": PolicyRule("coo.briefing.compile.v1", "D01", AuthorityClass.A1),
+    "coo.task.prioritize.v1": PolicyRule("coo.task.prioritize.v1", "D01", AuthorityClass.A1),
+    "coo.exception.escalate.v1": PolicyRule("coo.exception.escalate.v1", "D01", AuthorityClass.A1),
     "executive.briefing.generate.v1": PolicyRule("executive.briefing.generate.v1", "D01", AuthorityClass.A1),
     "crm.lead.upsert.v1": PolicyRule("crm.lead.upsert.v1", "D02", AuthorityClass.A1),
     "crm.opportunity.upsert.v1": PolicyRule("crm.opportunity.upsert.v1", "D02", AuthorityClass.A1),
+    "crm.opportunity.mark_lost.v1": PolicyRule("crm.opportunity.mark_lost.v1", "D02", AuthorityClass.A1),
     "intelligence.signal.route.v1": PolicyRule("intelligence.signal.route.v1", "D04", AuthorityClass.A1),
     "claims.verify.v1": PolicyRule("claims.verify.v1", "D04", AuthorityClass.A1),
+    "runner.assessment.execute.v1": PolicyRule("runner.assessment.execute.v1", "D04", AuthorityClass.A1),
     "engineering.ci.verify.v1": PolicyRule("engineering.ci.verify.v1", "D05", AuthorityClass.A1),
     "engineering.pr.create.v1": PolicyRule("engineering.pr.create.v1", "D05", AuthorityClass.A1),
     "schedule.feed.sync.v1": PolicyRule("schedule.feed.sync.v1", "D05", AuthorityClass.A1),
@@ -60,15 +67,23 @@ ACTION_CATALOG: Dict[str, PolicyRule] = {
     # A2 Bounded execution
     "commercial.outreach.send.v1": PolicyRule("commercial.outreach.send.v1", "D02", AuthorityClass.A2, requires_evidence=True),
     "crm.quotation.create_draft.v1": PolicyRule("crm.quotation.create_draft.v1", "D02", AuthorityClass.A2),
+    "crm.sales_order.create_draft.v1": PolicyRule("crm.sales_order.create_draft.v1", "D02", AuthorityClass.A2),
     "campaign.create_direct.v1": PolicyRule("campaign.create_direct.v1", "D02", AuthorityClass.A2),
+    "floor.adjust_dynamic.v1": PolicyRule("floor.adjust_dynamic.v1", "D02", AuthorityClass.A2),
     "openrtb.dsp.onboard.v1": PolicyRule("openrtb.dsp.onboard.v1", "D02", AuthorityClass.A2),
     "content.social.publish.v1": PolicyRule("content.social.publish.v1", "D03", AuthorityClass.A2, requires_evidence=True),
     "content.editorial.publish.v1": PolicyRule("content.editorial.publish.v1", "D03", AuthorityClass.A2, requires_evidence=True),
     "content.correction.withdraw.v1": PolicyRule("content.correction.withdraw.v1", "D03", AuthorityClass.A2),
     "engineering.release.deploy_staging.v1": PolicyRule("engineering.release.deploy_staging.v1", "D05", AuthorityClass.A2),
+    "engineering.runbook.execute.v1": PolicyRule("engineering.runbook.execute.v1", "D05", AuthorityClass.A2),
+    "channel.onboard.v1": PolicyRule("channel.onboard.v1", "D07", AuthorityClass.A2),
+    "app.build.generate.v1": PolicyRule("app.build.generate.v1", "D08", AuthorityClass.A2),
     "finance.invoice.create_draft.v1": PolicyRule("finance.invoice.create_draft.v1", "D06", AuthorityClass.A2),
-    "finance.invoice.submit_a2.v1": PolicyRule("finance.invoice.submit_a2.v1", "D06", AuthorityClass.A2),
+    "finance.invoice.submit_a2.v1": PolicyRule("finance.invoice.submit_a2.v1", "D06", AuthorityClass.A2, max_amount_usd=25000.0),
+    "finance.credit_note.create_draft.v1": PolicyRule("finance.credit_note.create_draft.v1", "D06", AuthorityClass.A2),
     "finance.payment.record_draft.v1": PolicyRule("finance.payment.record_draft.v1", "D06", AuthorityClass.A2),
+    "finance.payment.submit_a2.v1": PolicyRule("finance.payment.submit_a2.v1", "D06", AuthorityClass.A2, max_amount_usd=25000.0),
+    "finance.journal.create_draft.v1": PolicyRule("finance.journal.create_draft.v1", "D06", AuthorityClass.A2),
     "support.issue.create.v1": PolicyRule("support.issue.create.v1", "D07", AuthorityClass.A2),
     "support.issue.update_status.v1": PolicyRule("support.issue.update_status.v1", "D07", AuthorityClass.A2),
     "support.ticket.triage.v1": PolicyRule("support.ticket.triage.v1", "D07", AuthorityClass.A2),
@@ -76,6 +91,7 @@ ACTION_CATALOG: Dict[str, PolicyRule] = {
     "venture.scaffold.execute.v1": PolicyRule("venture.scaffold.execute.v1", "D08", AuthorityClass.A2),
     "procurement.purchase_order.create_draft.v1": PolicyRule("procurement.purchase_order.create_draft.v1", "D10", AuthorityClass.A2, max_amount_usd=500.0),
     "procurement.po.create_draft.v1": PolicyRule("procurement.po.create_draft.v1", "D10", AuthorityClass.A2, max_amount_usd=500.0),
+    "procurement.purchase_invoice.create_draft.v1": PolicyRule("procurement.purchase_invoice.create_draft.v1", "D10", AuthorityClass.A2, max_amount_usd=500.0),
     "vendor.access.revoke.v1": PolicyRule("vendor.access.revoke.v1", "D10", AuthorityClass.A2),
     "guardian.recovery.runbook.execute.v1": PolicyRule("guardian.recovery.runbook.execute.v1", "D11", AuthorityClass.A2),
 
@@ -122,9 +138,20 @@ class PolicyEngine:
     def record_approval(self, approval_ref: str, payload_hash: str) -> None:
         self.valid_approvals[approval_ref] = payload_hash
 
-    def evaluate(self, envelope: ActionEnvelope) -> PolicyDecision:
-        reasons: List[str] = []
+    def revoke_approval(self, approval_ref: str) -> bool:
+        return self.valid_approvals.pop(approval_ref, None) is not None
 
+    @staticmethod
+    def _extract_amount_usd(payload: dict) -> Optional[float]:
+        for key in ("amount_usd", "total_amount_usd", "amount", "grand_total"):
+            if key in payload and payload[key] is not None:
+                try:
+                    return float(payload[key])
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    def evaluate(self, envelope: ActionEnvelope) -> PolicyDecision:
         # 1. Emergency Halt Check
         if "company_wide" in self.active_halts:
             return PolicyDecision(
@@ -169,7 +196,7 @@ class PolicyEngine:
                 promoted_state="rejected",
             )
 
-        # 4. Authority Class Evaluation
+        # 4. Authority Class A4 Prohibition Check
         if rule.authority_class == AuthorityClass.A4:
             return PolicyDecision(
                 admitted=False,
@@ -180,7 +207,34 @@ class PolicyEngine:
                 promoted_state="rejected",
             )
 
-        # Evidence requirements
+        # 5. Department Ownership Check
+        if envelope.department_id != rule.department:
+            return PolicyDecision(
+                admitted=False,
+                requires_approval=False,
+                assigned_authority=rule.authority_class,
+                reasons=[
+                    f"Department ownership violation: '{envelope.action_type}' belongs to {rule.department}, "
+                    f"not {envelope.department_id}."
+                ],
+                canonical_hash=calc_hash,
+                promoted_state="rejected",
+            )
+
+        # 6. Product Scope Check (if restricted on rule)
+        if rule.supported_products and envelope.product_slug not in rule.supported_products:
+            return PolicyDecision(
+                admitted=False,
+                requires_approval=False,
+                assigned_authority=rule.authority_class,
+                reasons=[
+                    f"Product scope violation: '{envelope.action_type}' is not permitted on {envelope.product_slug}."
+                ],
+                canonical_hash=calc_hash,
+                promoted_state="rejected",
+            )
+
+        # 7. Evidence Requirements
         if rule.requires_evidence and not envelope.evidence_citations:
             return PolicyDecision(
                 admitted=False,
@@ -191,8 +245,15 @@ class PolicyEngine:
                 promoted_state="rejected",
             )
 
-        # A3 Human Approval Required
-        if rule.authority_class == AuthorityClass.A3:
+        # 8. Monetary Ceiling Escalation (A2 -> A3 when amount exceeds rule.max_amount_usd)
+        effective_authority = rule.authority_class
+        if rule.max_amount_usd is not None:
+            amount = self._extract_amount_usd(envelope.payload)
+            if amount is not None and amount > rule.max_amount_usd:
+                effective_authority = AuthorityClass.A3
+
+        # 9. A3 Human Approval Required
+        if effective_authority == AuthorityClass.A3:
             if not envelope.authorization_ref:
                 return PolicyDecision(
                     admitted=False,
@@ -202,7 +263,6 @@ class PolicyEngine:
                     canonical_hash=calc_hash,
                     promoted_state="awaiting_approval",
                 )
-            # Verify approval binding to exact payload hash
             approved_hash = self.valid_approvals.get(envelope.authorization_ref)
             if approved_hash != calc_hash:
                 return PolicyDecision(
@@ -214,11 +274,11 @@ class PolicyEngine:
                     promoted_state="awaiting_approval",
                 )
 
-        # A2 Standing Execution or A1/A0 Internal
+        # 10. A2 Standing Execution or A1/A0 Internal
         return PolicyDecision(
             admitted=True,
             requires_approval=False,
-            assigned_authority=rule.authority_class,
+            assigned_authority=effective_authority,
             reasons=["All policy checks passed."],
             canonical_hash=calc_hash,
             promoted_state="ready",

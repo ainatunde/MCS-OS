@@ -31,11 +31,13 @@ class OutboxWorker:
         repository: OutboxRepository,
         adapters: Dict[str, MCSProductAdapter],
         lease_seconds: int = 60,
+        dispatch_timeout_seconds: float = 30.0,
     ):
         self.worker_id = worker_id
         self.repo = repository
         self.adapters = adapters
         self.lease_seconds = lease_seconds
+        self.dispatch_timeout_seconds = dispatch_timeout_seconds
 
     async def execute_one(self) -> Optional[ExecutionReceipt]:
         # 1. Atomic claim & lease
@@ -43,9 +45,17 @@ class OutboxWorker:
         if not envelope:
             return None
 
-        # 2. Recheck halt/revocation at dispatch admission
+        # 2. Recheck halt/revocation at dispatch admission (pre-dispatch: not sent)
         if await self.repo.is_halted(envelope.product_slug):
-            await self.repo.mark_outcome_unknown(envelope.action_id, "Halt detected at dispatch admission")
+            if hasattr(self.repo, "settle_action"):
+                await self.repo.settle_action(
+                    envelope.action_id,
+                    ExecutionState.CANCELLED,
+                    OutcomeState.NOT_APPLIED,
+                    {"reason": "Halt detected at dispatch admission"},
+                )
+            else:
+                await self.repo.mark_outcome_unknown(envelope.action_id, "Halt detected at dispatch admission")
             return None
 
         # 3. Mark dispatching
@@ -67,8 +77,9 @@ class OutboxWorker:
 
         # 5. Execute action with timeout protection
         try:
-            # 30-second timeout on external product/provider adapter
-            receipt = await asyncio.wait_for(adapter.execute_action(envelope), timeout=30.0)
+            receipt = await asyncio.wait_for(
+                adapter.execute_action(envelope), timeout=self.dispatch_timeout_seconds
+            )
             await self.repo.mark_confirmed(envelope.action_id, receipt)
             return receipt
         except asyncio.TimeoutError:

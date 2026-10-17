@@ -7,36 +7,36 @@ Governed by MCS-OS Master Specification v2.2:
 """
 
 POSTGRES_SCHEMA_SQL = """
--- 1. Create the 8 distinct runtime roles (non-superuser, no BYPASSRLS)
+-- 1. Create the 8 distinct runtime roles (non-superuser, no BYPASSRLS, NOLOGIN until secret rotation)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_migration_role') THEN
-        CREATE ROLE mcs_migration_role WITH LOGIN PASSWORD 'change_in_production_migration';
+        CREATE ROLE mcs_migration_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_ingress_role') THEN
-        CREATE ROLE mcs_ingress_role WITH LOGIN PASSWORD 'change_in_production_ingress';
+        CREATE ROLE mcs_ingress_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_planner_role') THEN
-        CREATE ROLE mcs_planner_role WITH LOGIN PASSWORD 'change_in_production_planner';
+        CREATE ROLE mcs_planner_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_approver_role') THEN
-        CREATE ROLE mcs_approver_role WITH LOGIN PASSWORD 'change_in_production_approver';
+        CREATE ROLE mcs_approver_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_policy_role') THEN
-        CREATE ROLE mcs_policy_role WITH LOGIN PASSWORD 'change_in_production_policy';
+        CREATE ROLE mcs_policy_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_executor_role') THEN
-        CREATE ROLE mcs_executor_role WITH LOGIN PASSWORD 'change_in_production_executor';
+        CREATE ROLE mcs_executor_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_reconciler_role') THEN
-        CREATE ROLE mcs_reconciler_role WITH LOGIN PASSWORD 'change_in_production_reconciler';
+        CREATE ROLE mcs_reconciler_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mcs_auditor_role') THEN
-        CREATE ROLE mcs_auditor_role WITH LOGIN PASSWORD 'change_in_production_auditor';
+        CREATE ROLE mcs_auditor_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
 END $$;
 
--- 2. Core Control Plane Tables
+-- 2. Core Control Plane Tables (All 9 tables matching database/models.py)
 CREATE TABLE IF NOT EXISTS os_products (
     id VARCHAR(36) PRIMARY KEY,
     slug VARCHAR(64) UNIQUE NOT NULL,
@@ -54,6 +54,32 @@ CREATE TABLE IF NOT EXISTS os_departments (
     name VARCHAR(128) NOT NULL,
     accountable_role VARCHAR(64) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS os_agent_charters (
+    charter_id VARCHAR(64) PRIMARY KEY,
+    department_code VARCHAR(8) NOT NULL REFERENCES os_departments(code),
+    role_name VARCHAR(128) NOT NULL,
+    version VARCHAR(32) NOT NULL DEFAULT 'v2.2',
+    authority_ceiling VARCHAR(4) NOT NULL DEFAULT 'A2',
+    daily_budget_usd FLOAT NOT NULL DEFAULT 1.5,
+    allowed_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    prohibited_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    is_halted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS os_inbox_events (
+    event_id VARCHAR(64) PRIMARY KEY,
+    producer VARCHAR(64) NOT NULL,
+    product_slug VARCHAR(64) NOT NULL,
+    schema_version VARCHAR(16) NOT NULL DEFAULT 'v1',
+    correlation_id VARCHAR(64) NOT NULL,
+    causation_id VARCHAR(64),
+    payload_hash VARCHAR(64) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    processed BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS os_tasks (
@@ -105,6 +131,16 @@ CREATE TABLE IF NOT EXISTS os_approvals (
     revoked_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS os_budgets (
+    budget_id VARCHAR(64) PRIMARY KEY,
+    department_code VARCHAR(8) NOT NULL REFERENCES os_departments(code),
+    budget_date VARCHAR(10) NOT NULL,
+    daily_limit_usd FLOAT NOT NULL DEFAULT 15.0,
+    reserved_usd FLOAT NOT NULL DEFAULT 0.0,
+    spent_usd FLOAT NOT NULL DEFAULT 0.0,
+    recovery_reserve_usd FLOAT NOT NULL DEFAULT 2.0
+);
+
 CREATE TABLE IF NOT EXISTS os_audit_events (
     audit_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(64) NOT NULL,
@@ -115,6 +151,11 @@ CREATE TABLE IF NOT EXISTS os_audit_events (
     occurred_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     details JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- Enable Row Level Security
+ALTER TABLE os_action_outbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE os_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE os_approvals ENABLE ROW LEVEL SECURITY;
 
 -- 3. Security Definer Stored Functions enforcing Role Boundaries (§4.3)
 
@@ -209,7 +250,7 @@ BEGIN
 END;
 $$;
 
--- Function: Reconciler settles outcome
+-- Function: Reconciler settles outcome without overwriting original dispatched_at
 CREATE OR REPLACE FUNCTION fn_reconciler_settle_outcome(
     p_action_id VARCHAR(36),
     p_execution_state VARCHAR(32),
@@ -225,8 +266,9 @@ BEGIN
     SET execution_state = p_execution_state,
         outcome_state = p_outcome_state,
         provider_receipt = p_receipt,
-        dispatched_at = clock_timestamp()
-    WHERE action_id = p_action_id;
+        dispatched_at = COALESCE(dispatched_at, clock_timestamp())
+    WHERE action_id = p_action_id
+      AND execution_state IN ('leased', 'dispatching', 'provider_pending', 'outcome_unknown');
     RETURN FOUND;
 END;
 $$;
@@ -234,11 +276,15 @@ $$;
 -- 4. Revoke direct writes to tables and grant narrow function execution
 REVOKE ALL ON os_action_outbox FROM PUBLIC;
 REVOKE ALL ON os_tasks FROM PUBLIC;
+REVOKE ALL ON os_approvals FROM PUBLIC;
+REVOKE ALL ON os_inbox_events FROM PUBLIC;
 
-GRANT SELECT ON os_action_outbox TO mcs_planner_role, mcs_policy_role, mcs_executor_role, mcs_reconciler_role, mcs_auditor_role;
+GRANT SELECT, INSERT ON os_inbox_events TO mcs_ingress_role;
+GRANT SELECT, INSERT, UPDATE ON os_approvals TO mcs_approver_role;
+GRANT SELECT ON os_action_outbox TO mcs_planner_role, mcs_policy_role, mcs_executor_role, mcs_reconciler_role, mcs_auditor_role, mcs_approver_role;
 GRANT EXECUTE ON FUNCTION fn_planner_propose_action TO mcs_planner_role;
 GRANT EXECUTE ON FUNCTION fn_policy_promote_ready TO mcs_policy_role;
 GRANT EXECUTE ON FUNCTION fn_executor_claim_and_lease TO mcs_executor_role;
 GRANT EXECUTE ON FUNCTION fn_reconciler_settle_outcome TO mcs_reconciler_role;
-GRANT INSERT ON os_audit_events TO mcs_auditor_role, mcs_executor_role, mcs_policy_role;
+GRANT INSERT ON os_audit_events TO mcs_auditor_role, mcs_executor_role, mcs_policy_role, mcs_approver_role, mcs_ingress_role;
 """

@@ -2,7 +2,7 @@
 
 import pytest
 from contracts.actions.envelope import ActionEnvelope, AuthorityClass, canonical_payload_hash
-from services.policy.engine import PolicyEngine
+from services.policy.engine import ACTION_CATALOG, PolicyEngine
 
 
 @pytest.fixture
@@ -10,13 +10,23 @@ def policy_engine():
     return PolicyEngine()
 
 
-def make_envelope(action_type: str, authority_class: AuthorityClass, payload: dict, citations=None, auth_ref=None, product="cloudstream-vcp"):
+def make_envelope(
+    action_type: str,
+    authority_class: AuthorityClass,
+    payload: dict,
+    citations=None,
+    auth_ref=None,
+    product="cloudstream-vcp",
+    department_id=None,
+):
     c_hash = canonical_payload_hash(payload)
+    rule = ACTION_CATALOG.get(action_type)
+    dept = department_id or (rule.department if rule else "D02")
     return ActionEnvelope(
         action_id="act-test",
         task_id="tsk-test",
         charter_id="chr-test",
-        department_id="D02",
+        department_id=dept,
         product_slug=product,
         action_type=action_type,
         authority_class=authority_class,
@@ -36,7 +46,6 @@ def test_a1_routine_internal_admitted(policy_engine):
 
 
 def test_a2_evidence_required_rejection(policy_engine):
-    # commercial.outreach.send.v1 requires evidence citations
     env = make_envelope("commercial.outreach.send.v1", AuthorityClass.A2, {"recipient": "ceo@broadcaster.com"})
     decision = policy_engine.evaluate(env)
     assert decision.admitted is False
@@ -49,7 +58,7 @@ def test_a2_with_evidence_admitted(policy_engine):
         "commercial.outreach.send.v1",
         AuthorityClass.A2,
         {"recipient": "ceo@broadcaster.com"},
-        citations=["ref:tv-insights:channel:101"]
+        citations=["ref:tv-insights:channel:101"],
     )
     decision = policy_engine.evaluate(env)
     assert decision.admitted is True
@@ -90,3 +99,30 @@ def test_emergency_halt_rejection(policy_engine):
     assert decision.admitted is False
     assert decision.promoted_state == "rejected"
     assert "Emergency halt is active on product" in decision.reasons[0]
+
+
+def test_department_mismatch_rejected(policy_engine):
+    env = make_envelope(
+        "finance.invoice.create_draft.v1",
+        AuthorityClass.A2,
+        {"customer": "Cust A"},
+        department_id="D02",
+    )
+    decision = policy_engine.evaluate(env)
+    assert decision.admitted is False
+    assert decision.promoted_state == "rejected"
+    assert "Department ownership violation" in decision.reasons[0]
+
+
+def test_max_amount_usd_escalation_to_a3(policy_engine):
+    env = make_envelope(
+        "procurement.purchase_order.create_draft.v1",
+        AuthorityClass.A2,
+        {"supplier": "Vendor", "amount_usd": 1200.0},
+        department_id="D10",
+    )
+    decision = policy_engine.evaluate(env)
+    assert decision.admitted is False
+    assert decision.requires_approval is True
+    assert decision.assigned_authority == AuthorityClass.A3
+    assert decision.promoted_state == "awaiting_approval"

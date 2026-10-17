@@ -7,6 +7,7 @@ Provides the authenticated corporate control plane for:
   - Action Proposals & Policy Evaluation (/v1/action-intents)
   - Decision Inbox & Approvals (/v1/approvals)
   - Execution Status & Reconciliation (/v1/actions/{id})
+  - Incidents Registry (/v1/incidents)
   - Emergency Halts & Containment (/v1/halts)
   - Executive 07:30 WAT Briefings (/v1/briefings)
 """
@@ -15,9 +16,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
+import os
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException, status
+
+from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from contracts.actions.envelope import ActionEnvelope, AuthorityClass, OutcomeState, canonical_payload_hash
@@ -39,6 +44,19 @@ app = FastAPI(
     description="Multimedia Cloud Solutions Autonomous Operating System API",
 )
 
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("MCS_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-MCS-API-Key", "X-MCS-Actor", "X-MCS-Signature"],
+)
+
 # Global services & state
 policy_engine = PolicyEngine()
 ingress_service = IngressService()
@@ -54,10 +72,11 @@ adapters = {
     "mcs-erp": ERPNextAdapter(),
 }
 
-# In-memory stores for runtime
+# Runtime stores
 tasks_store: Dict[str, Dict[str, Any]] = {}
 actions_store: Dict[str, Dict[str, Any]] = {}
 approvals_store: Dict[str, Dict[str, Any]] = {}
+incidents_store: Dict[str, Dict[str, Any]] = {}
 briefings_store: List[Dict[str, Any]] = [
     {
         "briefing_id": "brf-20261016-0730",
@@ -70,26 +89,74 @@ briefings_store: List[Dict[str, Any]] = [
     }
 ]
 
+PRINCIPAL_ACTORS = {"founder_ceo", "principal", "board_chair"}
+
+
+def _is_auth_enforced() -> bool:
+    return (
+        os.environ.get("MCS_OS_AUTH_REQUIRED", "0") == "1"
+        or os.environ.get("MCS_OS_ENV", "development").lower() == "production"
+    )
+
+
+async def verify_control_auth(
+    authorization: Optional[str] = Header(default=None),
+    x_mcs_api_key: Optional[str] = Header(default=None),
+) -> str:
+    expected_token = os.environ.get("MCS_CONTROL_API_TOKEN", "")
+    provided = x_mcs_api_key or ""
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization[7:].strip()
+
+    if _is_auth_enforced():
+        if not expected_token or not provided or not hmac.compare_digest(provided, expected_token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Valid Bearer token or X-MCS-API-Key required",
+            )
+    return provided or "dev-session"
+
+
+async def verify_principal_auth(
+    _token: str = Depends(verify_control_auth),
+    x_mcs_actor: Optional[str] = Header(default=None),
+) -> str:
+    actor = x_mcs_actor or "founder_ceo"
+    if _is_auth_enforced() and (not x_mcs_actor or x_mcs_actor not in PRINCIPAL_ACTORS):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Principal role (X-MCS-Actor) required for A3 approvals and emergency halts",
+        )
+    return actor
+
 
 # Pydantic Request Models
 class EventSubmissionRequest(BaseModel):
-    event_id: str
-    producer: str
-    event_type: str
+    event_id: str = Field(..., min_length=3, max_length=128)
+    producer: str = Field(..., min_length=2, max_length=64)
+    event_type: str = Field(..., min_length=3, max_length=128)
     payload: Dict[str, Any]
     product_slug: Optional[str] = "corporate"
     schema_version: str = "v1"
+    signature: Optional[str] = None
 
 
 class ApprovalDecisionRequest(BaseModel):
-    decision: str  # "approve_content" | "approve_and_send" | "deny"
+    decision: str  # "approve_content" | "approve_and_send" | "deny" | "revoke" | "request_revision"
     actor: str = "founder_ceo"
     rationale: Optional[str] = None
 
 
 class HaltRequest(BaseModel):
-    scope: str  # "company_wide" or a specific product_slug
-    reason: str
+    scope: str = Field(..., min_length=2, max_length=64)
+    reason: str = Field(..., min_length=3, max_length=512)
+
+
+class IncidentCreateRequest(BaseModel):
+    incident_id: str = Field(..., min_length=3, max_length=64)
+    product_slug: str = Field(..., min_length=2, max_length=64)
+    severity: str = Field(default="high", max_length=32)
+    summary: str = Field(..., min_length=3, max_length=512)
 
 
 @app.get("/healthz")
@@ -104,7 +171,7 @@ async def healthz():
 
 
 @app.get("/v1/products")
-async def list_products():
+async def list_products(_auth: str = Depends(verify_control_auth)):
     product_list = []
     for slug, adapter in adapters.items():
         health = await adapter.read_health()
@@ -120,9 +187,33 @@ async def list_products():
 
 
 @app.post("/v1/events", status_code=status.HTTP_201_CREATED)
-async def submit_event(req: EventSubmissionRequest):
+async def submit_event(
+    req: EventSubmissionRequest,
+    x_mcs_signature: Optional[str] = Header(default=None),
+    _auth: str = Depends(verify_control_auth),
+):
     canonical_json = json.dumps(req.payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     payload_hash = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+    webhook_secret = os.environ.get("MCS_WEBHOOK_SECRET", "")
+    provided_sig = x_mcs_signature or req.signature
+    if webhook_secret or _is_auth_enforced():
+        if not webhook_secret or not provided_sig:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing webhook signature (X-MCS-Signature)",
+            )
+        expected_sig = hmac.new(
+            webhook_secret.encode("utf-8"),
+            f"{req.event_id}:{payload_hash}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(provided_sig, expected_sig):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature",
+            )
+
     envelope = EventEnvelope(
         event_id=req.event_id,
         producer=req.producer,
@@ -132,6 +223,7 @@ async def submit_event(req: EventSubmissionRequest):
         payload=req.payload,
         payload_hash=payload_hash,
         schema_version=req.schema_version,
+        signature=provided_sig,
     )
     result = ingress_service.ingest(envelope)
     return {
@@ -142,7 +234,7 @@ async def submit_event(req: EventSubmissionRequest):
 
 
 @app.get("/v1/tasks")
-async def list_tasks(department: Optional[str] = None):
+async def list_tasks(department: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
     results = list(tasks_store.values())
     if department:
         results = [t for t in results if t.get("department_id") == department]
@@ -150,7 +242,7 @@ async def list_tasks(department: Optional[str] = None):
 
 
 @app.post("/v1/action-intents", status_code=status.HTTP_201_CREATED)
-async def propose_action_intent(envelope: ActionEnvelope):
+async def propose_action_intent(envelope: ActionEnvelope, _auth: str = Depends(verify_control_auth)):
     decision = policy_engine.evaluate(envelope)
 
     record = {
@@ -183,7 +275,7 @@ async def propose_action_intent(envelope: ActionEnvelope):
 
 
 @app.get("/v1/approvals")
-async def list_approvals(status_filter: Optional[str] = None):
+async def list_approvals(status_filter: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
     results = list(approvals_store.values())
     if status_filter:
         results = [a for a in results if a.get("status") == status_filter]
@@ -191,7 +283,11 @@ async def list_approvals(status_filter: Optional[str] = None):
 
 
 @app.post("/v1/approvals/{action_id}/decide")
-async def decide_approval(action_id: str, req: ApprovalDecisionRequest):
+async def decide_approval(
+    action_id: str,
+    req: ApprovalDecisionRequest,
+    principal_actor: str = Depends(verify_principal_auth),
+):
     approval = approvals_store.get(action_id)
     if not approval:
         raise HTTPException(status_code=404, detail="Approval request not found")
@@ -200,26 +296,56 @@ async def decide_approval(action_id: str, req: ApprovalDecisionRequest):
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
 
-    if req.decision in ["approve_content", "approve_and_send"]:
+    actor = req.actor or principal_actor
+    if actor not in PRINCIPAL_ACTORS:
+        raise HTTPException(status_code=403, detail=f"Actor '{actor}' is not an authorized A3 Principal")
+
+    product_slug = action["envelope"].get("product_slug", "corporate")
+    approval_ref = f"appr-{action_id}"
+
+    if req.decision == "approve_content":
+        # Spec §5.3: 'Approve content' alone never releases the send queue.
+        approval["status"] = "content_approved"
+        approval["decision"] = req.decision
+        approval["actor"] = actor
+        action["status"] = "content_approved"
+    elif req.decision == "approve_and_send":
+        if "company_wide" in policy_engine.active_halts or product_slug in policy_engine.active_halts:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot release action '{action_id}' while emergency halt is active",
+            )
         approval["status"] = "granted"
         approval["decision"] = req.decision
-        approval["actor"] = req.actor
+        approval["actor"] = actor
         action["status"] = "ready"
-        # Register approval with policy engine
-        approval_ref = f"appr-{action_id}"
         policy_engine.record_approval(approval_ref, approval["payload_hash"])
     elif req.decision == "deny":
         approval["status"] = "denied"
-        approval["actor"] = req.actor
+        approval["decision"] = req.decision
+        approval["actor"] = actor
         action["status"] = "rejected"
+        policy_engine.revoke_approval(approval_ref)
+    elif req.decision == "revoke":
+        approval["status"] = "revoked"
+        approval["decision"] = req.decision
+        approval["actor"] = actor
+        action["status"] = "cancelled"
+        policy_engine.revoke_approval(approval_ref)
+    elif req.decision == "request_revision":
+        approval["status"] = "revision_requested"
+        approval["decision"] = req.decision
+        approval["actor"] = actor
+        action["status"] = "proposed"
+        policy_engine.revoke_approval(approval_ref)
     else:
         raise HTTPException(status_code=400, detail=f"Invalid decision: {req.decision}")
 
-    return {"status": approval["status"], "action_id": action_id}
+    return {"status": approval["status"], "action_id": action_id, "action_status": action["status"]}
 
 
 @app.get("/v1/actions/{action_id}")
-async def get_action(action_id: str):
+async def get_action(action_id: str, _auth: str = Depends(verify_control_auth)):
     action = actions_store.get(action_id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
@@ -227,7 +353,7 @@ async def get_action(action_id: str):
 
 
 @app.post("/v1/actions/{action_id}/reconcile")
-async def reconcile_action(action_id: str):
+async def reconcile_action(action_id: str, _auth: str = Depends(verify_control_auth)):
     action = actions_store.get(action_id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
@@ -238,29 +364,50 @@ async def reconcile_action(action_id: str):
     if not adapter:
         raise HTTPException(status_code=400, detail=f"No adapter for product: {product_slug}")
 
-    # Non-mutating lookup
     outcome = await adapter.lookup_outcome(action_id, envelope_data["idempotency_key"])
     action["reconciled_outcome"] = outcome.model_dump(mode="json")
     return action["reconciled_outcome"]
 
 
+@app.get("/v1/incidents")
+async def list_incidents(product_slug: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
+    results = list(incidents_store.values())
+    if product_slug:
+        results = [i for i in results if i.get("product_slug") == product_slug]
+    return {"count": len(results), "incidents": results}
+
+
+@app.post("/v1/incidents", status_code=status.HTTP_201_CREATED)
+async def create_incident(req: IncidentCreateRequest, _auth: str = Depends(verify_control_auth)):
+    record = {
+        "incident_id": req.incident_id,
+        "product_slug": req.product_slug,
+        "severity": req.severity,
+        "summary": req.summary,
+        "state": "open",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    incidents_store[req.incident_id] = record
+    return record
+
+
 @app.get("/v1/halts")
-async def list_halts():
+async def list_halts(_auth: str = Depends(verify_control_auth)):
     return {"active_halts": list(policy_engine.active_halts)}
 
 
 @app.post("/v1/halts", status_code=status.HTTP_201_CREATED)
-async def create_halt(req: HaltRequest):
+async def create_halt(req: HaltRequest, _principal: str = Depends(verify_principal_auth)):
     policy_engine.register_halt(req.scope)
     return {"status": "halt_registered", "scope": req.scope, "active_halts": list(policy_engine.active_halts)}
 
 
 @app.delete("/v1/halts/{scope}")
-async def remove_halt(scope: str):
+async def remove_halt(scope: str, _principal: str = Depends(verify_principal_auth)):
     policy_engine.lift_halt(scope)
     return {"status": "halt_lifted", "scope": scope, "active_halts": list(policy_engine.active_halts)}
 
 
 @app.get("/v1/briefings")
-async def get_briefings():
+async def get_briefings(_auth: str = Depends(verify_control_auth)):
     return {"count": len(briefings_store), "briefings": briefings_store}
