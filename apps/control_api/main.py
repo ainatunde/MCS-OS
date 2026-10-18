@@ -44,11 +44,20 @@ app = FastAPI(
     description="Multimedia Cloud Solutions Autonomous Operating System API",
 )
 
-allowed_origins = [
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://command.mcsolutions.stream",
+    "https://os.mcsolutions.stream",
+    "https://erp.mcsolutions.stream",
+]
+env_origins = [
     origin.strip()
-    for origin in os.environ.get("MCS_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    for origin in os.environ.get("MCS_CORS_ORIGINS", "").split(",")
     if origin.strip()
 ]
+allowed_origins = list(dict.fromkeys(default_origins + env_origins))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -72,10 +81,143 @@ adapters = {
     "mcs-erp": ERPNextAdapter(),
 }
 
-# Runtime stores
+# Executive Persona Governance & Department Mandates (MCS-OS v2.2 §4.1)
+PRINCIPAL_ACTORS = {
+    "founder_ceo", "ceo", "principal", "board_chair",
+    "cfo", "cto", "coo", "commercial_lead", "commercial",
+}
+
+ROLE_AUTHORITY_SCOPES: Dict[str, Dict[str, Any]] = {
+    "founder_ceo": {
+        "title": "Chief Executive Officer (CEO)",
+        "departments": ["*"],
+        "can_halt_company": True,
+        "email": "aina_tunde@hotmail.com",
+    },
+    "ceo": {
+        "title": "Chief Executive Officer (CEO)",
+        "departments": ["*"],
+        "can_halt_company": True,
+        "email": "aina_tunde@hotmail.com",
+    },
+    "principal": {
+        "title": "Corporate Principal",
+        "departments": ["*"],
+        "can_halt_company": True,
+        "email": "aina_tunde@hotmail.com",
+    },
+    "board_chair": {
+        "title": "Board Chair",
+        "departments": ["*"],
+        "can_halt_company": True,
+        "email": "aina_tunde@hotmail.com",
+    },
+    "cfo": {
+        "title": "Chief Financial Officer (CFO)",
+        "departments": ["D06", "D10", "D02"],
+        "can_halt_company": False,
+        "email": "cfo@mcsolutions.stream",
+    },
+    "cto": {
+        "title": "Chief Technology Officer (CTO)",
+        "departments": ["D05", "D04", "D08"],
+        "can_halt_company": True,
+        "email": "cto@mcsolutions.stream",
+    },
+    "coo": {
+        "title": "Chief Operating Officer (COO)",
+        "departments": ["D01", "D07", "D10"],
+        "can_halt_company": True,
+        "email": "coo@mcsolutions.stream",
+    },
+    "commercial": {
+        "title": "Chief Commercial Officer (CCO)",
+        "departments": ["D02", "D03"],
+        "can_halt_company": False,
+        "email": "commercial@mcsolutions.stream",
+    },
+    "commercial_lead": {
+        "title": "Chief Commercial Officer (CCO)",
+        "departments": ["D02", "D03"],
+        "can_halt_company": False,
+        "email": "commercial@mcsolutions.stream",
+    },
+}
+
+# Runtime stores with pre-seeded executive proposals
 tasks_store: Dict[str, Dict[str, Any]] = {}
-actions_store: Dict[str, Dict[str, Any]] = {}
-approvals_store: Dict[str, Dict[str, Any]] = {}
+actions_store: Dict[str, Dict[str, Any]] = {
+    "act-d02-001": {
+        "action_id": "act-d02-001",
+        "envelope": {"product_slug": "aether-ads", "department_id": "D02"},
+        "status": "awaiting_approval",
+    },
+    "act-d06-001": {
+        "action_id": "act-d06-001",
+        "envelope": {"product_slug": "corporate", "department_id": "D06"},
+        "status": "awaiting_approval",
+    },
+    "act-d05-001": {
+        "action_id": "act-d05-001",
+        "envelope": {"product_slug": "cloudstream-vcp", "department_id": "D05"},
+        "status": "awaiting_approval",
+    },
+    "act-d01-001": {
+        "action_id": "act-d01-001",
+        "envelope": {"product_slug": "tv-insights", "department_id": "D01"},
+        "status": "awaiting_approval",
+    },
+}
+
+approvals_store: Dict[str, Dict[str, Any]] = {
+    "act-d02-001": {
+        "approval_id": "appr-d02-001",
+        "action_id": "act-d02-001",
+        "department_id": "D02",
+        "action_type": "commercial.nonstandard_offer.v1",
+        "payload_hash": "sha256:4a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+        "title": "Metro Broadcast SSAI Agreement (35% rev-share)",
+        "proposed_effect": "Special multi-channel SSAI agreement for Metro Broadcast (35% rev-share)",
+        "amount_usd": 12000.0,
+        "status": "pending",
+        "created_at": "2026-10-17T12:00:00Z",
+    },
+    "act-d06-001": {
+        "approval_id": "appr-d06-001",
+        "action_id": "act-d06-001",
+        "department_id": "D06",
+        "action_type": "finance.treasury_allocation.v1",
+        "payload_hash": "sha256:6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d",
+        "title": "Quarterly Reserved GPU Compute Cluster Commitment",
+        "proposed_effect": "Quarterly cloud reservation for edge neural transcoders ($24,500 commitment)",
+        "amount_usd": 24500.0,
+        "status": "pending",
+        "created_at": "2026-10-17T14:30:00Z",
+    },
+    "act-d05-001": {
+        "approval_id": "appr-d05-001",
+        "action_id": "act-d05-001",
+        "department_id": "D05",
+        "action_type": "engineering.infrastructure_autoscale.v1",
+        "payload_hash": "sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+        "title": "Transcoding Cluster Dynamic Scale Ceiling Increase (24 to 48 nodes)",
+        "proposed_effect": "Dynamic scaling threshold expansion for Lagos & Johannesburg edge POPs",
+        "status": "pending",
+        "created_at": "2026-10-17T16:00:00Z",
+    },
+    "act-d01-001": {
+        "approval_id": "appr-d01-001",
+        "action_id": "act-d01-001",
+        "department_id": "D01",
+        "action_type": "operations.vendor_sla_waiver.v1",
+        "payload_hash": "sha256:2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+        "title": "TV-Insights Regional Feed Ingest Temporary Concurrency Expansion",
+        "proposed_effect": "Temporary crawler concurrency multiplier during prime-time broadcasting",
+        "status": "pending",
+        "created_at": "2026-10-17T18:15:00Z",
+    },
+}
+
 incidents_store: Dict[str, Dict[str, Any]] = {}
 briefings_store: List[Dict[str, Any]] = [
     {
@@ -88,8 +230,6 @@ briefings_store: List[Dict[str, Any]] = [
         "standing_authority_execution": "100%",
     }
 ]
-
-PRINCIPAL_ACTORS = {"founder_ceo", "principal", "board_chair"}
 
 
 def _is_auth_enforced() -> bool:
@@ -298,7 +438,17 @@ async def decide_approval(
 
     actor = req.actor or principal_actor
     if actor not in PRINCIPAL_ACTORS:
-        raise HTTPException(status_code=403, detail=f"Actor '{actor}' is not an authorized A3 Principal")
+        raise HTTPException(status_code=403, detail=f"Actor '{actor}' is not an authorized A3 Principal or Executive")
+
+    # Verify department governance scope
+    scope_info = ROLE_AUTHORITY_SCOPES.get(actor, {})
+    allowed_depts = scope_info.get("departments", ["*"])
+    dept = approval.get("department_id")
+    if "*" not in allowed_depts and dept and dept not in allowed_depts:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Actor '{actor}' is not authorized to sign off for department {dept}. Mandate: {allowed_depts}",
+        )
 
     product_slug = action["envelope"].get("product_slug", "corporate")
     approval_ref = f"appr-{action_id}"
@@ -397,7 +547,14 @@ async def list_halts(_auth: str = Depends(verify_control_auth)):
 
 
 @app.post("/v1/halts", status_code=status.HTTP_201_CREATED)
-async def create_halt(req: HaltRequest, _principal: str = Depends(verify_principal_auth)):
+async def create_halt(req: HaltRequest, principal_actor: str = Depends(verify_principal_auth)):
+    if req.scope == "company_wide":
+        scope_info = ROLE_AUTHORITY_SCOPES.get(principal_actor, {})
+        if not scope_info.get("can_halt_company", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Actor '{principal_actor}' is not authorized to trigger company-wide emergency halts",
+            )
     policy_engine.register_halt(req.scope)
     return {"status": "halt_registered", "scope": req.scope, "active_halts": list(policy_engine.active_halts)}
 
@@ -411,3 +568,72 @@ async def remove_halt(scope: str, _principal: str = Depends(verify_principal_aut
 @app.get("/v1/briefings")
 async def get_briefings(_auth: str = Depends(verify_control_auth)):
     return {"count": len(briefings_store), "briefings": briefings_store}
+
+
+@app.get("/v1/team")
+async def get_team_directory(_auth: str = Depends(verify_control_auth)):
+    return {
+        "count": 6,
+        "team": [
+            {
+                "persona": "founder_ceo",
+                "role_code": "CEO",
+                "title": "Chief Executive Officer",
+                "email": "aina_tunde@hotmail.com",
+                "departments": ["*"],
+                "authority_ceiling": "A3 (Unlimited)",
+                "erp_role": "Administrator",
+                "erp_link": "https://erp.mcsolutions.stream/app",
+            },
+            {
+                "persona": "cfo",
+                "role_code": "CFO",
+                "title": "Chief Financial Officer",
+                "email": "cfo@mcsolutions.stream",
+                "departments": ["D06", "D10", "D02"],
+                "authority_ceiling": "A2 ($10/day burn, $25,000 limit)",
+                "erp_role": "Accounts Manager, Accounts User, Auditor",
+                "erp_link": "https://erp.mcsolutions.stream/app/accounting",
+            },
+            {
+                "persona": "cto",
+                "role_code": "CTO",
+                "title": "Chief Technology Officer",
+                "email": "cto@mcsolutions.stream",
+                "departments": ["D05", "D04", "D08"],
+                "authority_ceiling": "A2 ($30/day burn, Infrastructure Gates)",
+                "erp_role": "System Manager",
+                "erp_link": "https://erp.mcsolutions.stream/app/settings",
+            },
+            {
+                "persona": "coo",
+                "role_code": "COO",
+                "title": "Chief Operating Officer",
+                "email": "coo@mcsolutions.stream",
+                "departments": ["D01", "D07", "D10"],
+                "authority_ceiling": "A2 ($15/day burn, Operations Execution)",
+                "erp_role": "Projects Manager, Stock Manager, Purchase Manager",
+                "erp_link": "https://erp.mcsolutions.stream/app/stock",
+            },
+            {
+                "persona": "commercial",
+                "role_code": "CCO",
+                "title": "Chief Commercial Officer",
+                "email": "commercial@mcsolutions.stream",
+                "departments": ["D02", "D03"],
+                "authority_ceiling": "A2 ($25/day burn, Deal Structuring)",
+                "erp_role": "Sales Manager, Sales User, Sales Master Manager",
+                "erp_link": "https://erp.mcsolutions.stream/app/selling",
+            },
+            {
+                "persona": "support",
+                "role_code": "Support",
+                "title": "Customer Success Lead",
+                "email": "support@mcsolutions.stream",
+                "departments": ["D07"],
+                "authority_ceiling": "A1 (Support Triage)",
+                "erp_role": "Support Team",
+                "erp_link": "https://erp.mcsolutions.stream/app/support",
+            },
+        ],
+    }
