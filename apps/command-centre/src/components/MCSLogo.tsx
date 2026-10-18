@@ -30,13 +30,13 @@ export default function MCSLogo({
       {/* 3D or Vector Emblem */}
       {variant === '3d' ? (
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-xl blur-xs opacity-60 group-hover:opacity-100 transition duration-300"></div>
+          <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl blur-xs opacity-60 group-hover:opacity-100 transition duration-300"></div>
           <img
             src="/mcs_logo_3d.jpg"
             alt="Multimedia Cloud Solutions"
             width={img}
             height={img}
-            className="relative rounded-lg object-cover shadow-lg border border-cyan-400/30"
+            className="relative rounded-lg object-cover shadow-lg border border-orange-400/30"
           />
         </div>
       ) : (
@@ -47,39 +47,34 @@ export default function MCSLogo({
             viewBox="0 0 48 48"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="drop-shadow-[0_0_12px_rgba(0,229,255,0.4)]"
+            className="drop-shadow-[0_0_12px_rgba(249,115,22,0.45)]"
           >
             <defs>
-              <linearGradient id="logo-left-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#0284C7" />
-                <stop offset="100%" stopColor="#00E5FF" />
+              <linearGradient id="logo-m-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#FDBA74" />
+                <stop offset="0.5" stopColor="#F97316" />
+                <stop offset="1" stopColor="#C2410C" />
               </linearGradient>
-              <linearGradient id="logo-right-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7C4DFF" />
-                <stop offset="50%" stopColor="#6366F1" />
-                <stop offset="100%" stopColor="#00E5FF" />
-              </linearGradient>
-              <linearGradient id="logo-core-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00E5FF" />
-                <stop offset="100%" stopColor="#10B981" />
+              <linearGradient id="logo-core-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#FFF7ED" />
+                <stop offset="1" stopColor="#FBBF24" />
               </linearGradient>
             </defs>
 
-            {/* Background Badge */}
-            <rect width="48" height="48" rx="12" fill="#0A0F1D" stroke="#1E293B" strokeWidth="1.5" />
-            <rect width="46" height="46" x="1" y="1" rx="11" fill="none" stroke="rgba(0, 229, 255, 0.25)" strokeWidth="1" />
+            {/* Badge */}
+            <rect width="48" height="48" rx="12" fill="#0C0A09" />
+            <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#F97316" strokeOpacity="0.35" strokeWidth="1.5" />
 
-            {/* Broadcast Waves */}
-            <path d="M 12 14 C 18 9, 30 9, 36 14" stroke="#00E5FF" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-            <path d="M 16 17 C 20 13, 28 13, 32 17" stroke="#7C4DFF" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+            {/* Broadcast signal arcs */}
+            <path d="M 14 12.5 Q 24 4.5 34 12.5" stroke="#FDBA74" strokeOpacity="0.35" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M 18 14 Q 24 9 30 14" stroke="#FB923C" strokeOpacity="0.8" strokeWidth="1.6" strokeLinecap="round" />
 
-            {/* M-Wings */}
-            <path d="M 11 36 L 11 20 C 11 17 14 15.5 17 17.5 L 24 23 L 20.5 27 L 16.5 23.5 L 16.5 36 Z" fill="url(#logo-left-grad)" />
-            <path d="M 37 36 L 37 20 C 37 17 34 15.5 31 17.5 L 24 23 L 27.5 27 L 31.5 23.5 L 31.5 36 Z" fill="url(#logo-right-grad)" />
+            {/* M monogram */}
+            <polygon points="10,40 10,19 16.5,19 24,29.5 31.5,19 38,19 38,40 32,40 32,28.5 24,39 16,28.5 16,40" fill="url(#logo-m-grad)" />
+            <polygon points="24,29.5 31.5,19 38,19 38,40 32,40 32,28.5 24,39" fill="#FFFFFF" fillOpacity="0.12" />
 
-            {/* Diamond Core */}
-            <polygon points="24,24.5 28.5,29 24,33.5 19.5,29" fill="url(#logo-core-grad)" />
-            <circle cx="24" cy="29" r="1.5" fill="#FFFFFF" />
+            {/* Core node */}
+            <polygon points="24,19 27.5,22.5 24,26 20.5,22.5" fill="url(#logo-core-grad)" />
           </svg>
         </div>
       )}
@@ -88,18 +83,18 @@ export default function MCSLogo({
       {variant !== 'mark' && (
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5 leading-none">
-            <span className={`font-extrabold tracking-tight text-white font-mono ${text}`}>
+            <span className={`font-extrabold tracking-tight text-orange-50 font-mono ${text}`}>
               MCS
             </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
             {variant === 'full' && (
-              <span className="text-[11px] font-bold tracking-widest uppercase text-cyan-400/90 ml-0.5">
+              <span className="text-[11px] font-bold tracking-widest uppercase text-orange-400 ml-0.5">
                 MEDIA CLOUD
               </span>
             )}
           </div>
           {variant === 'full' && (
-            <span className={`font-semibold uppercase tracking-[0.2em] text-slate-400 mt-1 leading-none ${sub}`}>
+            <span className={`font-semibold uppercase tracking-[0.2em] text-stone-400 mt-1 leading-none ${sub}`}>
               Multimedia Cloud Solutions
             </span>
           )}

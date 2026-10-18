@@ -286,28 +286,28 @@ export default function UserFacingProductsPage() {
   };
 
   return (
-    <main className="font-sans bg-slate-950 text-slate-100 min-h-screen selection:bg-cyan-500 selection:text-slate-950">
+    <main className="font-sans bg-stone-950 text-stone-100 min-h-screen selection:bg-orange-500 selection:text-stone-950">
       {/* User-Facing Sticky Navigation Header */}
-      <nav className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-stone-800/80 bg-stone-950/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
           {/* Logo with official 3D Emblem or SVG Mark */}
           <MCSLogo variant="full" size="md" showLink={false} />
 
           {/* Navigation Links */}
           <div className="hidden lg:flex items-center gap-7 text-xs font-semibold tracking-wide">
-            <a href="#solutions" className="text-slate-300 hover:text-cyan-400 transition">
+            <a href="#solutions" className="text-stone-300 hover:text-orange-400 transition">
               Solutions
             </a>
-            <a href="#products" className="text-slate-300 hover:text-cyan-400 transition">
+            <a href="#products" className="text-stone-300 hover:text-orange-400 transition">
               Products
             </a>
-            <a href="#pipeline" className="text-slate-300 hover:text-cyan-400 transition">
+            <a href="#pipeline" className="text-stone-300 hover:text-orange-400 transition">
               Architecture
             </a>
-            <a href="#calculator" className="text-slate-300 hover:text-cyan-400 transition">
+            <a href="#calculator" className="text-stone-300 hover:text-orange-400 transition">
               ROI Calculator
             </a>
-            <a href="#tiers" className="text-slate-300 hover:text-cyan-400 transition">
+            <a href="#tiers" className="text-stone-300 hover:text-orange-400 transition">
               Deployment Models
             </a>
           </div>
@@ -318,19 +318,19 @@ export default function UserFacingProductsPage() {
               href="https://erp.mcsolutions.stream/app"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-700/80 rounded-lg hover:bg-slate-900 transition"
+              className="hidden sm:inline-flex px-3 py-1.5 text-xs font-semibold text-stone-300 hover:text-white border border-stone-700/80 rounded-lg hover:bg-stone-900 transition"
             >
               Client Portal (ERP) ↗
             </a>
             <button
               onClick={() => handleOpenLeadModal(products[0])}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs rounded-lg transition shadow-lg shadow-cyan-500/20"
+              className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-stone-950 font-bold text-xs rounded-lg transition shadow-lg shadow-orange-500/20"
             >
               Request Proposal
             </button>
             <Link
               href="/"
-              className="px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition"
+              className="px-2.5 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-200 transition"
               title="Switch to Internal Executive Command Centre"
             >
               ⚙
@@ -342,25 +342,25 @@ export default function UserFacingProductsPage() {
       {/* Hero Section */}
       <header className="relative pt-20 pb-24 px-6 max-w-7xl mx-auto text-center overflow-hidden">
         {/* Ambient Glow Effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute top-1/3 right-10 w-[400px] h-[250px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute top-1/3 right-10 w-[400px] h-[250px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         {/* 3D Emblem Floating Accent */}
         <div className="flex justify-center mb-6">
           <div className="relative group cursor-pointer inline-block">
-            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-indigo-500 to-cyan-500 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500"></div>
+            <div className="absolute -inset-2 bg-gradient-to-r from-orange-500 via-orange-500 to-orange-500 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500"></div>
             <img
               src="/mcs_logo_3d.jpg"
               alt="Multimedia Cloud Solutions Official Emblem"
               width={96}
               height={96}
-              className="relative rounded-2xl border-2 border-cyan-400/50 shadow-2xl shadow-cyan-950/60 object-cover"
+              className="relative rounded-2xl border-2 border-orange-400/50 shadow-2xl shadow-orange-950/60 object-cover"
             />
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs font-bold text-cyan-400 tracking-wider uppercase mb-5 shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-stone-900/90 border border-stone-700/80 text-xs font-bold text-orange-400 tracking-wider uppercase mb-5 shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping"></span>
           <span>Intelligent Media Infrastructure & Programmatic Ad-Tech</span>
         </div>
 
@@ -368,7 +368,7 @@ export default function UserFacingProductsPage() {
           The Autonomous Operating Spine for Global Media & Broadcast
         </h1>
 
-        <p className="mt-5 text-base md:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
+        <p className="mt-5 text-base md:text-xl text-stone-300 max-w-3xl mx-auto leading-relaxed">
           High-density GPU linear video playout, sub-3ms programmatic ad decisioning, turnkey Connected TV app generation, and attribution-backed broadcast intelligence.
         </p>
 
@@ -376,14 +376,14 @@ export default function UserFacingProductsPage() {
         <div className="mt-8 flex flex-wrap justify-center items-center gap-4">
           <button
             onClick={() => handleOpenLeadModal(products[0])}
-            className="px-6 py-3 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-sm rounded-xl transition shadow-xl shadow-cyan-400/20 flex items-center gap-2"
+            className="px-6 py-3 bg-orange-400 hover:bg-orange-300 text-stone-950 font-extrabold text-sm rounded-xl transition shadow-xl shadow-orange-400/20 flex items-center gap-2"
           >
             <span>Schedule Architecture Briefing</span>
             <span>→</span>
           </button>
           <a
             href="#solutions"
-            className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-sm rounded-xl border border-slate-700 transition"
+            className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-stone-200 font-semibold text-sm rounded-xl border border-stone-700 transition"
           >
             Explore Solutions by Industry
           </a>
@@ -391,7 +391,7 @@ export default function UserFacingProductsPage() {
             href="https://pulzz.mcsolutions.stream"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-5 py-3 text-cyan-400 hover:text-cyan-300 font-bold text-sm transition flex items-center gap-1.5"
+            className="px-5 py-3 text-orange-400 hover:text-orange-300 font-bold text-sm transition flex items-center gap-1.5"
           >
             <span>Live Feed Monitor (Pulzz)</span>
             <span>↗</span>
@@ -400,31 +400,31 @@ export default function UserFacingProductsPage() {
 
         {/* Hero Proof Metrics */}
         <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <span className="text-2xl md:text-3xl font-extrabold text-cyan-400 font-mono">0.86 ms</span>
-            <p className="text-xs text-slate-400 mt-1 font-medium">p99 Ad Decision Latency</p>
+          <div className="p-4 rounded-xl bg-stone-900/90 border border-stone-800">
+            <span className="text-2xl md:text-3xl font-extrabold text-orange-400 font-mono">0.86 ms</span>
+            <p className="text-xs text-stone-400 mt-1 font-medium">p99 Ad Decision Latency</p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div className="p-4 rounded-xl bg-stone-900/90 border border-stone-800">
             <span className="text-2xl md:text-3xl font-extrabold text-emerald-400 font-mono">1,420+</span>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Broadcast Feeds Tracked</p>
+            <p className="text-xs text-stone-400 mt-1 font-medium">Broadcast Feeds Tracked</p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <span className="text-2xl md:text-3xl font-extrabold text-indigo-400 font-mono">99.99%</span>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Broadcast SLA Availability</p>
+          <div className="p-4 rounded-xl bg-stone-900/90 border border-stone-800">
+            <span className="text-2xl md:text-3xl font-extrabold text-orange-400 font-mono">99.99%</span>
+            <p className="text-xs text-stone-400 mt-1 font-medium">Broadcast SLA Availability</p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div className="p-4 rounded-xl bg-stone-900/90 border border-stone-800">
             <span className="text-2xl md:text-3xl font-extrabold text-amber-400 font-mono">100%</span>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Attributed ERP Reconciliation</p>
+            <p className="text-xs text-stone-400 mt-1 font-medium">Attributed ERP Reconciliation</p>
           </div>
         </div>
       </header>
 
       {/* Interactive Solution Finder by Buyer Persona */}
-      <section id="solutions" className="py-16 px-6 max-w-7xl mx-auto border-t border-slate-800/80">
+      <section id="solutions" className="py-16 px-6 max-w-7xl mx-auto border-t border-stone-800/80">
         <div className="text-center mb-10">
-          <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">Tailored Architectures</span>
+          <span className="text-xs font-bold text-orange-400 tracking-wider uppercase">Tailored Architectures</span>
           <h2 className="text-2xl md:text-4xl font-extrabold text-white mt-1">Built for Your Media Business</h2>
-          <p className="text-xs md:text-sm text-slate-400 mt-2 max-w-xl mx-auto">
+          <p className="text-xs md:text-sm text-stone-400 mt-2 max-w-xl mx-auto">
             Select your organization type to see the exact recommended MCS product bundle, architectural fit, and projected ROI.
           </p>
         </div>
@@ -435,79 +435,79 @@ export default function UserFacingProductsPage() {
             onClick={() => setSelectedPersona('broadcaster')}
             className={`p-3.5 rounded-xl border text-left transition ${
               selectedPersona === 'broadcaster'
-                ? 'bg-cyan-950/40 border-cyan-400 text-white shadow-lg shadow-cyan-950/30'
-                : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-orange-950/40 border-orange-400 text-white shadow-lg shadow-orange-950/30'
+                : 'bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
             <span className="text-lg block">📺</span>
             <span className="text-xs font-bold block mt-1">Linear Broadcasters</span>
-            <span className="text-[10px] text-slate-400 block">TV & Cable Networks</span>
+            <span className="text-[10px] text-stone-400 block">TV & Cable Networks</span>
           </button>
 
           <button
             onClick={() => setSelectedPersona('fast_creator')}
             className={`p-3.5 rounded-xl border text-left transition ${
               selectedPersona === 'fast_creator'
-                ? 'bg-cyan-950/40 border-cyan-400 text-white shadow-lg shadow-cyan-950/30'
-                : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-orange-950/40 border-orange-400 text-white shadow-lg shadow-orange-950/30'
+                : 'bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
             <span className="text-lg block">⚡</span>
             <span className="text-xs font-bold block mt-1">FAST & OTT Creators</span>
-            <span className="text-[10px] text-slate-400 block">Digital Streaming Networks</span>
+            <span className="text-[10px] text-stone-400 block">Digital Streaming Networks</span>
           </button>
 
           <button
             onClick={() => setSelectedPersona('ad_agency')}
             className={`p-3.5 rounded-xl border text-left transition ${
               selectedPersona === 'ad_agency'
-                ? 'bg-cyan-950/40 border-cyan-400 text-white shadow-lg shadow-cyan-950/30'
-                : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-orange-950/40 border-orange-400 text-white shadow-lg shadow-orange-950/30'
+                : 'bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
             <span className="text-lg block">🎯</span>
             <span className="text-xs font-bold block mt-1">Ad Agencies & DSPs</span>
-            <span className="text-[10px] text-slate-400 block">Programmatic Buyers</span>
+            <span className="text-[10px] text-stone-400 block">Programmatic Buyers</span>
           </button>
 
           <button
             onClick={() => setSelectedPersona('enterprise')}
             className={`p-3.5 rounded-xl border text-left transition ${
               selectedPersona === 'enterprise'
-                ? 'bg-cyan-950/40 border-cyan-400 text-white shadow-lg shadow-cyan-950/30'
-                : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-orange-950/40 border-orange-400 text-white shadow-lg shadow-orange-950/30'
+                : 'bg-stone-900/70 border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
             <span className="text-lg block">🏛️</span>
             <span className="text-xs font-bold block mt-1">Regulated Entities</span>
-            <span className="text-[10px] text-slate-400 block">Institutions & Enterprise</span>
+            <span className="text-[10px] text-stone-400 block">Institutions & Enterprise</span>
           </button>
         </div>
 
         {/* Selected Persona Detail Banner */}
-        <div className="max-w-4xl mx-auto p-6 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl">
+        <div className="max-w-4xl mx-auto p-6 bg-stone-900/90 border border-stone-800 rounded-2xl shadow-xl">
           {selectedPersona === 'broadcaster' && (
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-3 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Cloud Migration & Programmatic Monetization Suite</h3>
-                  <p className="text-xs text-slate-400">Recommended Products: <span className="text-cyan-400 font-semibold">CloudStream VCP + TV-Insights + MCS-ERP</span></p>
+                  <p className="text-xs text-stone-400">Recommended Products: <span className="text-orange-400 font-semibold">CloudStream VCP + TV-Insights + MCS-ERP</span></p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 font-mono text-xs font-bold border border-cyan-800">
+                <span className="px-3 py-1 rounded-full bg-orange-950 text-orange-300 font-mono text-xs font-bold border border-orange-800">
                   Target: 60%+ Capex Reduction
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Markerless AI Ingest</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-300">
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Markerless AI Ingest</span>
                   Automated computer vision and acoustic cue detection monetizes live feeds without manual broadcast markers.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Sub-Second SSAI</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Sub-Second SSAI</span>
                   Dynamic server-side ad replacement with Florence-2 VLM verification prevents dropped frames and buffering.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Proof-of-Play Audit</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Proof-of-Play Audit</span>
                   Attribution-backed EPG monitoring verifies ad insertion against broadcast logs, syncing directly into ERP billing.
                 </div>
               </div>
@@ -516,26 +516,26 @@ export default function UserFacingProductsPage() {
 
           {selectedPersona === 'fast_creator' && (
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-3 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Turnkey FAST Channel & Multi-Screen App Suite</h3>
-                  <p className="text-xs text-slate-400">Recommended Products: <span className="text-cyan-400 font-semibold">CloudStream Forge + Aether ADX</span></p>
+                  <p className="text-xs text-stone-400">Recommended Products: <span className="text-orange-400 font-semibold">CloudStream Forge + Aether ADX</span></p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 font-mono text-xs font-bold border border-cyan-800">
+                <span className="px-3 py-1 rounded-full bg-orange-950 text-orange-300 font-mono text-xs font-bold border border-orange-800">
                   Target: Launch in 5 Days
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Universal CTV Apps</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-300">
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Universal CTV Apps</span>
                   Turnkey white-label apps for Roku, Apple TV, Android TV, Fire TV, and mobile generated automatically.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Pre-Wired Ad Exchange</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Pre-Wired Ad Exchange</span>
                   Integrated OpenRTB 3.0 programmatic auction fills commercial airtime from global DSPs immediately at launch.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Zero Maintenance Chaos</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Zero Maintenance Chaos</span>
                   Automated app store compliance updates and single-spine deployment across all consumer platforms.
                 </div>
               </div>
@@ -544,26 +544,26 @@ export default function UserFacingProductsPage() {
 
           {selectedPersona === 'ad_agency' && (
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-3 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Programmatic Video Buying & Media Intelligence</h3>
-                  <p className="text-xs text-slate-400">Recommended Products: <span className="text-cyan-400 font-semibold">Aether ADS + TV-Insights</span></p>
+                  <p className="text-xs text-stone-400">Recommended Products: <span className="text-orange-400 font-semibold">Aether ADS + TV-Insights</span></p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 font-mono text-xs font-bold border border-cyan-800">
+                <span className="px-3 py-1 rounded-full bg-orange-950 text-orange-300 font-mono text-xs font-bold border border-orange-800">
                   Target: Sub-3ms Execution & 0% Fraud
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Sub-3ms Decision Engine</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-300">
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Sub-3ms Decision Engine</span>
                   Handles 15,000+ RPS sustained throughput with Thompson-sampled creative selection and dynamic floor pricing.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Attributed Share-of-Voice</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Attributed Share-of-Voice</span>
                   Competitive ad spend monitoring and electronic program schedules across 1,420+ African TV and radio feeds.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Dual Currency Billing</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Dual Currency Billing</span>
                   Automated campaign budgeting in Naira (NGN) and US Dollars with instant escrow settlement.
                 </div>
               </div>
@@ -572,26 +572,26 @@ export default function UserFacingProductsPage() {
 
           {selectedPersona === 'enterprise' && (
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-3 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Regulated Vertical Intelligence & Compliance Spine</h3>
-                  <p className="text-xs text-slate-400">Recommended Products: <span className="text-cyan-400 font-semibold">MCS App Factory + AfricaSignal</span></p>
+                  <p className="text-xs text-stone-400">Recommended Products: <span className="text-orange-400 font-semibold">MCS App Factory + AfricaSignal</span></p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 font-mono text-xs font-bold border border-cyan-800">
+                <span className="px-3 py-1 rounded-full bg-orange-950 text-orange-300 font-mono text-xs font-bold border border-orange-800">
                   Target: Zero-Hallucination Assurance
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Spine + Subject Packs</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-300">
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Spine + Subject Packs</span>
                   Modular architecture allowing rapid deployment of compliance verticals simply by providing a risk taxonomy.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Verifiable Citation Chain</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Verifiable Citation Chain</span>
                   Every synthesized finding carries a SHA-256 hash-chained snapshot and strict human-in-the-loop review gating.
                 </div>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-bold text-cyan-300 block mb-1">Multi-Tenant Isolation</span>
+                <div className="p-3 bg-stone-950 rounded-lg border border-stone-800">
+                  <span className="font-bold text-orange-300 block mb-1">Multi-Tenant Isolation</span>
                   Strict database tenant partitioning ensuring proprietary institutional data never leaks into general models.
                 </div>
               </div>
@@ -601,12 +601,12 @@ export default function UserFacingProductsPage() {
       </section>
 
       {/* Interactive ROI & TCO Cost Savings Calculator */}
-      <section id="calculator" className="py-16 px-6 max-w-7xl mx-auto border-t border-slate-800/80">
-        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/60 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+      <section id="calculator" className="py-16 px-6 max-w-7xl mx-auto border-t border-stone-800/80">
+        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-orange-950/60 p-8 rounded-3xl border border-stone-800 shadow-2xl">
           <div className="max-w-3xl mb-8">
-            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Financial Modeling</span>
+            <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Financial Modeling</span>
             <h2 className="text-2xl md:text-4xl font-extrabold text-white mt-1">Estimate Your Playout Savings & Ad Revenue Uplift</h2>
-            <p className="text-xs md:text-sm text-slate-400 mt-2">
+            <p className="text-xs md:text-sm text-stone-400 mt-2">
               Calculate projected infrastructure cost reductions and programmatic ad revenue yield gains when transitioning to the unified MCS spine.
             </p>
           </div>
@@ -616,8 +616,8 @@ export default function UserFacingProductsPage() {
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-2">
-                  <span className="text-slate-300">Active Live Channels / Feeds</span>
-                  <span className="text-cyan-400 font-mono text-base">{channelsCount} Channels</span>
+                  <span className="text-stone-300">Active Live Channels / Feeds</span>
+                  <span className="text-orange-400 font-mono text-base">{channelsCount} Channels</span>
                 </div>
                 <input
                   type="range"
@@ -626,9 +626,9 @@ export default function UserFacingProductsPage() {
                   step="1"
                   value={channelsCount}
                   onChange={e => setChannelsCount(Number(e.target.value))}
-                  className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                  className="w-full accent-orange-400 cursor-pointer h-2 bg-stone-800 rounded-lg"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                <div className="flex justify-between text-[10px] text-stone-500 mt-1">
                   <span>1 Channel</span>
                   <span>15 Channels</span>
                   <span>30 Channels</span>
@@ -637,8 +637,8 @@ export default function UserFacingProductsPage() {
 
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-2">
-                  <span className="text-slate-300">Monthly Ad Impressions</span>
-                  <span className="text-cyan-400 font-mono text-base">{monthlyImpressionsMillions}M Impressions</span>
+                  <span className="text-stone-300">Monthly Ad Impressions</span>
+                  <span className="text-orange-400 font-mono text-base">{monthlyImpressionsMillions}M Impressions</span>
                 </div>
                 <input
                   type="range"
@@ -647,9 +647,9 @@ export default function UserFacingProductsPage() {
                   step="1"
                   value={monthlyImpressionsMillions}
                   onChange={e => setMonthlyImpressionsMillions(Number(e.target.value))}
-                  className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                  className="w-full accent-orange-400 cursor-pointer h-2 bg-stone-800 rounded-lg"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                <div className="flex justify-between text-[10px] text-stone-500 mt-1">
                   <span>1M/month</span>
                   <span>75M/month</span>
                   <span>150M/month</span>
@@ -658,20 +658,20 @@ export default function UserFacingProductsPage() {
             </div>
 
             {/* Calculated Results Card */}
-            <div className="p-6 bg-slate-950 rounded-2xl border border-cyan-500/30 shadow-xl">
-              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Projected Annual Financial Impact</span>
+            <div className="p-6 bg-stone-950 rounded-2xl border border-orange-500/30 shadow-xl">
+              <span className="text-xs uppercase font-bold text-stone-400 tracking-wider">Projected Annual Financial Impact</span>
               <div className="mt-4 space-y-3">
-                <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-800">
-                  <span className="text-slate-400">Playout Cloud Savings (GPU NVENC vs Legacy):</span>
+                <div className="flex justify-between items-center text-xs pb-2 border-b border-stone-800">
+                  <span className="text-stone-400">Playout Cloud Savings (GPU NVENC vs Legacy):</span>
                   <span className="text-emerald-400 font-mono font-bold">${annualPlayoutSavings.toLocaleString()} / year</span>
                 </div>
-                <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-800">
-                  <span className="text-slate-400">Ad Yield Uplift (+${averageCpmUplift} eCPM):</span>
-                  <span className="text-cyan-400 font-mono font-bold">${annualAdYieldUplift.toLocaleString()} / year</span>
+                <div className="flex justify-between items-center text-xs pb-2 border-b border-stone-800">
+                  <span className="text-stone-400">Ad Yield Uplift (+${averageCpmUplift} eCPM):</span>
+                  <span className="text-orange-400 font-mono font-bold">${annualAdYieldUplift.toLocaleString()} / year</span>
                 </div>
                 <div className="pt-2">
-                  <span className="text-xs text-slate-400 block font-medium">Total Projected Annual Value:</span>
-                  <span className="text-3xl md:text-4xl font-extrabold text-white font-mono text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
+                  <span className="text-xs text-stone-400 block font-medium">Total Projected Annual Value:</span>
+                  <span className="text-3xl md:text-4xl font-extrabold text-white font-mono text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-emerald-400">
                     ${Math.round(totalAnnualValueCreated).toLocaleString()} USD
                   </span>
                 </div>
@@ -679,7 +679,7 @@ export default function UserFacingProductsPage() {
 
               <button
                 onClick={() => handleOpenLeadModal(products[0])}
-                className="mt-6 w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs rounded-xl transition shadow-md"
+                className="mt-6 w-full py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-stone-950 font-bold text-xs rounded-xl transition shadow-md"
               >
                 Request Custom TCO Audit & Proposal →
               </button>
@@ -689,44 +689,44 @@ export default function UserFacingProductsPage() {
       </section>
 
       {/* 8-Product Ecosystem Showcase */}
-      <section id="products" className="py-16 px-6 max-w-7xl mx-auto border-t border-slate-800/80">
+      <section id="products" className="py-16 px-6 max-w-7xl mx-auto border-t border-stone-800/80">
         <div className="text-center mb-10">
-          <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">Complete Portfolio</span>
+          <span className="text-xs font-bold text-orange-400 tracking-wider uppercase">Complete Portfolio</span>
           <h2 className="text-2xl md:text-4xl font-extrabold text-white mt-1">The 8 Specialized Pillars of MCS</h2>
-          <p className="text-xs md:text-sm text-slate-400 mt-2 max-w-xl mx-auto">
+          <p className="text-xs md:text-sm text-stone-400 mt-2 max-w-xl mx-auto">
             From ingest transcoders to automated CTV apps and double-entry ERP accounting, explore our modular, enterprise-grade capabilities.
           </p>
         </div>
 
         {/* Category Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 border-b border-slate-800 pb-4 mb-8">
+        <div className="flex flex-wrap justify-center gap-2 border-b border-stone-800 pb-4 mb-8">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'all' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'all' ? 'bg-orange-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
           >
             All Products (8)
           </button>
           <button
             onClick={() => setActiveCategory('broadcast')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'broadcast' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'broadcast' ? 'bg-orange-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
           >
             Broadcast & FAST Playout
           </button>
           <button
             onClick={() => setActiveCategory('adtech')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'adtech' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'adtech' ? 'bg-orange-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
           >
             Ad-Tech & Programmatic (ADS / ADX)
           </button>
           <button
             onClick={() => setActiveCategory('intelligence')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'intelligence' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'intelligence' ? 'bg-orange-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
           >
             Media & Market Intelligence
           </button>
           <button
             onClick={() => setActiveCategory('enterprise')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'enterprise' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${activeCategory === 'enterprise' ? 'bg-orange-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
           >
             Enterprise Spines & ERPNext
           </button>
@@ -737,34 +737,34 @@ export default function UserFacingProductsPage() {
           {filteredProducts.map(product => (
             <div
               key={product.slug}
-              className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-950/20 transition group"
+              className="bg-stone-900/90 border border-stone-800 rounded-2xl p-6 flex flex-col justify-between hover:border-orange-500/50 hover:shadow-xl hover:shadow-orange-950/20 transition group"
             >
               <div>
                 {/* Header Row */}
                 <div className="flex justify-between items-start gap-3">
                   <div>
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-stone-800 text-orange-300 border border-stone-700">
                       {product.badge}
                     </span>
-                    <h3 className="text-xl font-bold text-white mt-2 group-hover:text-cyan-300 transition">
+                    <h3 className="text-xl font-bold text-white mt-2 group-hover:text-orange-300 transition">
                       {product.name}
                     </h3>
                   </div>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded">
+                  <span className="text-xs font-mono text-stone-500 bg-stone-950 px-2 py-1 rounded">
                     {product.repoName.split('/')[1]}
                   </span>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-300 mt-1">{product.tagline}</p>
-                <p className="text-xs text-slate-400 mt-2 leading-relaxed">{product.overview}</p>
+                <p className="text-sm font-semibold text-stone-300 mt-1">{product.tagline}</p>
+                <p className="text-xs text-stone-400 mt-2 leading-relaxed">{product.overview}</p>
 
                 {/* Key Capabilities */}
-                <div className="mt-4 pt-3 border-t border-slate-800">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Technical Capabilities</h4>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
+                <div className="mt-4 pt-3 border-t border-stone-800">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">Technical Capabilities</h4>
+                  <ul className="space-y-1.5 text-xs text-stone-300">
                     {product.capabilities.slice(0, 4).map((cap, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <span className="text-cyan-400 mt-0.5">▹</span>
+                        <span className="text-orange-400 mt-0.5">▹</span>
                         <span>{cap}</span>
                       </li>
                     ))}
@@ -772,15 +772,15 @@ export default function UserFacingProductsPage() {
                 </div>
 
                 {/* Proprietary Advantage */}
-                <div className="mt-4 p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <div className="mt-4 p-3 rounded-xl bg-stone-950 border border-stone-800">
                   <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block">Proprietary Advantage</span>
-                  <p className="text-xs text-slate-300 mt-1">{product.differentiator}</p>
+                  <p className="text-xs text-stone-300 mt-1">{product.differentiator}</p>
                 </div>
 
                 {/* Tech Stack Pills */}
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {product.techStack.map(tech => (
-                    <span key={tech} className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800">
+                    <span key={tech} className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-950 text-stone-400 border border-stone-800">
                       {tech}
                     </span>
                   ))}
@@ -788,10 +788,10 @@ export default function UserFacingProductsPage() {
               </div>
 
               {/* Bottom Card Footer */}
-              <div className="mt-6 pt-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="text-xs text-slate-400">
-                  <span className="block text-[10px] uppercase font-bold text-slate-500">Commercial Model</span>
-                  <span className="text-slate-300 font-medium">{product.commercialModel}</span>
+              <div className="mt-6 pt-4 border-t border-stone-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="text-xs text-stone-400">
+                  <span className="block text-[10px] uppercase font-bold text-stone-500">Commercial Model</span>
+                  <span className="text-stone-300 font-medium">{product.commercialModel}</span>
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -800,14 +800,14 @@ export default function UserFacingProductsPage() {
                       href={product.liveUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition"
+                      className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg transition"
                     >
                       Live Console ↗
                     </a>
                   )}
                   <button
                     onClick={() => handleOpenLeadModal(product)}
-                    className="px-3.5 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition shadow-xs"
+                    className="px-3.5 py-1.5 bg-orange-500 hover:bg-orange-400 text-stone-950 text-xs font-bold rounded-lg transition shadow-xs"
                   >
                     Request Demo
                   </button>
@@ -819,59 +819,59 @@ export default function UserFacingProductsPage() {
       </section>
 
       {/* End-to-End Synergy Pipeline Infographic */}
-      <section id="pipeline" className="bg-slate-950 py-16 px-6 border-t border-slate-800/80">
+      <section id="pipeline" className="bg-stone-950 py-16 px-6 border-t border-stone-800/80">
         <div className="max-w-7xl mx-auto text-center">
-          <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">Integrated Architecture</span>
+          <span className="text-xs font-bold text-orange-400 tracking-wider uppercase">Integrated Architecture</span>
           <h2 className="text-2xl md:text-3xl font-extrabold text-white mt-1">The Complete Camera-to-Cash Video Pipeline</h2>
-          <p className="text-xs md:text-sm text-slate-400 mt-2 max-w-2xl mx-auto">
+          <p className="text-xs md:text-sm text-stone-400 mt-2 max-w-2xl mx-auto">
             Eliminate multi-vendor integration drop-offs. Ingest linear broadcast feeds, package multi-screen FAST apps, run real-time programmatic ad auctions, and reconcile invoices in ERPNext automatically.
           </p>
 
           <div className="mt-10 grid grid-cols-1 md:grid-cols-5 gap-3 max-w-5xl mx-auto text-left">
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold">01 • Ingest & Playout</span>
+            <div className="p-4 rounded-xl bg-stone-900 border border-stone-800">
+              <span className="text-xs font-mono text-orange-400 font-bold">01 • Ingest & Playout</span>
               <h4 className="font-bold text-sm text-white mt-1">CloudStream VCP</h4>
-              <p className="text-[11px] text-slate-400 mt-1">GPU transcoding, SCTE-35 insertion & VLM cue arbitration.</p>
+              <p className="text-[11px] text-stone-400 mt-1">GPU transcoding, SCTE-35 insertion & VLM cue arbitration.</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold">02 • Turnkey Apps</span>
+            <div className="p-4 rounded-xl bg-stone-900 border border-stone-800">
+              <span className="text-xs font-mono text-orange-400 font-bold">02 • Turnkey Apps</span>
               <h4 className="font-bold text-sm text-white mt-1">CloudStream Forge</h4>
-              <p className="text-[11px] text-slate-400 mt-1">Instant branded apps on Roku, Apple TV, Fire TV, and mobile.</p>
+              <p className="text-[11px] text-stone-400 mt-1">Instant branded apps on Roku, Apple TV, Fire TV, and mobile.</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold">03 • Ad Monetization</span>
+            <div className="p-4 rounded-xl bg-stone-900 border border-stone-800">
+              <span className="text-xs font-mono text-orange-400 font-bold">03 • Ad Monetization</span>
               <h4 className="font-bold text-sm text-white mt-1">Aether ADS & ADX</h4>
-              <p className="text-[11px] text-slate-400 mt-1">Sub-3ms ad decisioning, OpenRTB 3.0 SSP, and dynamic yield.</p>
+              <p className="text-[11px] text-stone-400 mt-1">Sub-3ms ad decisioning, OpenRTB 3.0 SSP, and dynamic yield.</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold">04 • Media Analytics</span>
+            <div className="p-4 rounded-xl bg-stone-900 border border-stone-800">
+              <span className="text-xs font-mono text-orange-400 font-bold">04 • Media Analytics</span>
               <h4 className="font-bold text-sm text-white mt-1">TV-Insights / Pulzz</h4>
-              <p className="text-[11px] text-slate-400 mt-1">1,420+ feeds monitored, EPG intelligence & share-of-voice.</p>
+              <p className="text-[11px] text-stone-400 mt-1">1,420+ feeds monitored, EPG intelligence & share-of-voice.</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold">05 • Settlement</span>
+            <div className="p-4 rounded-xl bg-stone-900 border border-stone-800">
+              <span className="text-xs font-mono text-orange-400 font-bold">05 • Settlement</span>
               <h4 className="font-bold text-sm text-white mt-1">MCS-ERP (v15)</h4>
-              <p className="text-[11px] text-slate-400 mt-1">Automated multi-currency billing, VAT 7.5%, and partner payouts.</p>
+              <p className="text-[11px] text-stone-400 mt-1">Automated multi-currency billing, VAT 7.5%, and partner payouts.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Deployment & Commercial Tiers */}
-      <section id="tiers" className="py-16 px-6 max-w-7xl mx-auto border-t border-slate-800/80">
+      <section id="tiers" className="py-16 px-6 max-w-7xl mx-auto border-t border-stone-800/80">
         <div className="text-center mb-12">
-          <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">Engagement Models</span>
+          <span className="text-xs font-bold text-orange-400 tracking-wider uppercase">Engagement Models</span>
           <h2 className="text-2xl md:text-3xl font-extrabold text-white mt-1">Flexible Deployment & Licensing Models</h2>
-          <p className="text-xs md:text-sm text-slate-400 mt-2">Engineered to scale from boutique digital channels to sovereign national broadcast networks.</p>
+          <p className="text-xs md:text-sm text-stone-400 mt-2">Engineered to scale from boutique digital channels to sovereign national broadcast networks.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col justify-between">
+          <div className="p-6 bg-stone-900/90 border border-stone-800 rounded-2xl flex flex-col justify-between">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">FAST & Channel Creators</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-400">FAST & Channel Creators</span>
               <h3 className="text-xl font-bold text-white mt-1">Digital Network Launch</h3>
-              <p className="text-xs text-slate-400 mt-2">Turnkey playout and Connected TV distribution for 1–5 linear channels.</p>
-              <ul className="mt-4 space-y-2 text-xs text-slate-300">
+              <p className="text-xs text-stone-400 mt-2">Turnkey playout and Connected TV distribution for 1–5 linear channels.</p>
+              <ul className="mt-4 space-y-2 text-xs text-stone-300">
                 <li>✓ CloudStream VCP live SRT / RTMP ingest</li>
                 <li>✓ Branded web & mobile streaming apps</li>
                 <li>✓ Programmatic ad monetization via Aether ADX</li>
@@ -880,21 +880,21 @@ export default function UserFacingProductsPage() {
             </div>
             <button
               onClick={() => handleOpenLeadModal(products[1])}
-              className="mt-6 w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition"
+              className="mt-6 w-full py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold rounded-lg transition"
             >
               Select FAST Launch
             </button>
           </div>
 
-          <div className="p-6 bg-gradient-to-b from-slate-900 via-indigo-950/40 to-slate-900 border-2 border-cyan-400/80 rounded-2xl flex flex-col justify-between shadow-xl relative">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-400 text-slate-950 text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-full">
+          <div className="p-6 bg-gradient-to-b from-stone-900 via-orange-950/40 to-stone-900 border-2 border-orange-400/80 rounded-2xl flex flex-col justify-between shadow-xl relative">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-400 text-stone-950 text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-full">
               Most Popular
             </span>
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Broadcasters & Networks</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-300">Broadcasters & Networks</span>
               <h3 className="text-xl font-bold text-white mt-1">Full Commercial Playout & SSAI</h3>
-              <p className="text-xs text-slate-400 mt-2">Enterprise linear cloud playout with sub-3ms ad decisioning and TV analytics.</p>
-              <ul className="mt-4 space-y-2 text-xs text-slate-300">
+              <p className="text-xs text-stone-400 mt-2">Enterprise linear cloud playout with sub-3ms ad decisioning and TV analytics.</p>
+              <ul className="mt-4 space-y-2 text-xs text-stone-300">
                 <li>✓ Dedicated GPU-accelerated transcoding (NVENC)</li>
                 <li>✓ Multi-modal AI break detection & VLM arbiter</li>
                 <li>✓ Aether ADS ad decision server with dynamic floor pricing</li>
@@ -904,18 +904,18 @@ export default function UserFacingProductsPage() {
             </div>
             <button
               onClick={() => handleOpenLeadModal(products[0])}
-              className="mt-6 w-full py-2.5 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 text-xs font-bold rounded-lg transition shadow-md"
+              className="mt-6 w-full py-2.5 bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-300 hover:to-amber-400 text-stone-950 text-xs font-bold rounded-lg transition shadow-md"
             >
               Request Broadcaster Proposal
             </button>
           </div>
 
-          <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col justify-between">
+          <div className="p-6 bg-stone-900/90 border border-stone-800 rounded-2xl flex flex-col justify-between">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Enterprise & Sovereign</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-400">Enterprise & Sovereign</span>
               <h3 className="text-xl font-bold text-white mt-1">Private Cloud & Spine Licensing</h3>
-              <p className="text-xs text-slate-400 mt-2">Dedicated single-tenant infrastructure with custom POPs and ERP integration.</p>
-              <ul className="mt-4 space-y-2 text-xs text-slate-300">
+              <p className="text-xs text-stone-400 mt-2">Dedicated single-tenant infrastructure with custom POPs and ERP integration.</p>
+              <ul className="mt-4 space-y-2 text-xs text-stone-300">
                 <li>✓ Dedicated regional edge POPs (Lagos, Johannesburg, Nairobi)</li>
                 <li>✓ Custom vertical subject packs via MCS App Factory</li>
                 <li>✓ Direct ERPNext on-prem or isolated cloud deployment</li>
@@ -924,7 +924,7 @@ export default function UserFacingProductsPage() {
             </div>
             <button
               onClick={() => handleOpenLeadModal(products[6])}
-              className="mt-6 w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition"
+              className="mt-6 w-full py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold rounded-lg transition"
             >
               Contact Enterprise Sales
             </button>
@@ -934,14 +934,14 @@ export default function UserFacingProductsPage() {
 
       {/* Proposal / Demo Request Modal (Linked to ERPNext CRM) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-left">
-            <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-stone-900 border border-stone-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-left">
+            <div className="flex justify-between items-start border-b border-stone-800 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-white">Request Solution Proposal & Live Demo</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Automated lead routing to MCS-ERP & Commercial Engineering</p>
+                <p className="text-xs text-stone-400 mt-0.5">Automated lead routing to MCS-ERP & Commercial Engineering</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white font-bold p-1">
+              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-white font-bold p-1">
                 ✕
               </button>
             </div>
@@ -952,10 +952,10 @@ export default function UserFacingProductsPage() {
                   ✓
                 </div>
                 <h4 className="text-base font-bold text-white mt-3">Proposal Request Received!</h4>
-                <p className="text-xs text-slate-300 mt-1">
-                  Ticket Reference: <code className="text-cyan-400 font-mono font-bold">{submittedLeadId}</code>
+                <p className="text-xs text-stone-300 mt-1">
+                  Ticket Reference: <code className="text-orange-400 font-mono font-bold">{submittedLeadId}</code>
                 </p>
-                <p className="text-xs text-slate-400 mt-2 max-w-sm mx-auto">
+                <p className="text-xs text-stone-400 mt-2 max-w-sm mx-auto">
                   A commercial solutions engineer has been notified and an introductory quotation has been initialized in ERPNext.
                 </p>
                 <button
@@ -963,7 +963,7 @@ export default function UserFacingProductsPage() {
                     setIsModalOpen(false);
                     setSubmittedLeadId(null);
                   }}
-                  className="mt-5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition"
+                  className="mt-5 px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg transition"
                 >
                   Close Window
                 </button>
@@ -971,46 +971,46 @@ export default function UserFacingProductsPage() {
             ) : (
               <form onSubmit={handleLeadSubmit} className="mt-4 space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">Full Name</label>
                   <input
                     type="text"
                     required
                     value={leadForm.name}
                     onChange={e => setLeadForm({ ...leadForm, name: e.target.value })}
                     placeholder="e.g. Tunde Aina"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-400"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Company / Station</label>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">Company / Station</label>
                     <input
                       type="text"
                       required
                       value={leadForm.company}
                       onChange={e => setLeadForm({ ...leadForm, company: e.target.value })}
                       placeholder="e.g. Metro Broadcast"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                      className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Work Email</label>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">Work Email</label>
                     <input
                       type="email"
                       required
                       value={leadForm.email}
                       onChange={e => setLeadForm({ ...leadForm, email: e.target.value })}
                       placeholder="name@company.com"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                      className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-400"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Product of Interest</label>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">Product of Interest</label>
                   <select
                     value={leadForm.product}
                     onChange={e => setLeadForm({ ...leadForm, product: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-400"
                   >
                     {products.map(p => (
                       <option key={p.slug} value={p.name}>
@@ -1020,26 +1020,26 @@ export default function UserFacingProductsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Requirements / Message</label>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">Requirements / Message</label>
                   <textarea
                     rows={3}
                     value={leadForm.message}
                     onChange={e => setLeadForm({ ...leadForm, message: e.target.value })}
                     placeholder="Describe your active channel volume, streaming formats, or advertising integration goals..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-400"
                   ></textarea>
                 </div>
                 <div className="pt-2 flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition"
+                    className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold rounded-lg transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-bold rounded-lg transition shadow-xs"
+                    className="px-4 py-1.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-stone-950 text-xs font-bold rounded-lg transition shadow-xs"
                   >
                     Submit Proposal Request
                   </button>
@@ -1051,49 +1051,49 @@ export default function UserFacingProductsPage() {
       )}
 
       {/* User-Facing Corporate Footer */}
-      <footer className="border-t border-slate-800/80 py-12 px-6 text-xs text-slate-400 bg-slate-950">
+      <footer className="border-t border-stone-800/80 py-12 px-6 text-xs text-stone-400 bg-stone-950">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-left">
           <div className="col-span-1 md:col-span-2">
             <MCSLogo variant="full" size="md" showLink={false} />
-            <p className="mt-3 text-slate-400 max-w-sm text-xs leading-relaxed">
+            <p className="mt-3 text-stone-400 max-w-sm text-xs leading-relaxed">
               Multimedia Cloud Solutions Ltd. is a sovereign media infrastructure and ad-technology company providing automated playout, low-latency ad insertion, and media intelligence across global screens.
             </p>
-            <p className="mt-3 text-[11px] text-slate-500">
+            <p className="mt-3 text-[11px] text-stone-500">
               Offices: Lagos, Nigeria • London, United Kingdom
             </p>
           </div>
 
           <div>
             <h4 className="font-bold text-xs uppercase tracking-wider text-white mb-3">Products</h4>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li><a href="#products" className="hover:text-cyan-400 transition">CloudStream VCP</a></li>
-              <li><a href="#products" className="hover:text-cyan-400 transition">CloudStream Forge</a></li>
-              <li><a href="#products" className="hover:text-cyan-400 transition">Aether ADS & ADX</a></li>
-              <li><a href="#products" className="hover:text-cyan-400 transition">TV-Insights / Pulzz</a></li>
-              <li><a href="#products" className="hover:text-cyan-400 transition">AfricaSignal</a></li>
-              <li><a href="#products" className="hover:text-cyan-400 transition">MCS App Factory</a></li>
+            <ul className="space-y-2 text-xs text-stone-400">
+              <li><a href="#products" className="hover:text-orange-400 transition">CloudStream VCP</a></li>
+              <li><a href="#products" className="hover:text-orange-400 transition">CloudStream Forge</a></li>
+              <li><a href="#products" className="hover:text-orange-400 transition">Aether ADS & ADX</a></li>
+              <li><a href="#products" className="hover:text-orange-400 transition">TV-Insights / Pulzz</a></li>
+              <li><a href="#products" className="hover:text-orange-400 transition">AfricaSignal</a></li>
+              <li><a href="#products" className="hover:text-orange-400 transition">MCS App Factory</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-xs uppercase tracking-wider text-white mb-3">Portals & Access</h4>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li><a href="https://erp.mcsolutions.stream/app" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition">Client ERPDesk Login ↗</a></li>
-              <li><a href="https://pulzz.mcsolutions.stream" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition">Pulzz Live Monitor ↗</a></li>
-              <li><Link href="/" className="hover:text-cyan-400 transition">Operator Command Centre</Link></li>
-              <li><a href="https://os.mcsolutions.stream/healthz" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition">API Service Status ↗</a></li>
+            <ul className="space-y-2 text-xs text-stone-400">
+              <li><a href="https://erp.mcsolutions.stream/app" target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition">Client ERPDesk Login ↗</a></li>
+              <li><a href="https://pulzz.mcsolutions.stream" target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition">Pulzz Live Monitor ↗</a></li>
+              <li><Link href="/" className="hover:text-orange-400 transition">Operator Command Centre</Link></li>
+              <li><a href="https://os.mcsolutions.stream/healthz" target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition">API Service Status ↗</a></li>
             </ul>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] text-slate-500">
+        <div className="max-w-7xl mx-auto pt-6 border-t border-stone-800/80 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] text-stone-500">
           <p>© {new Date().getFullYear()} Multimedia Cloud Solutions Ltd. All rights reserved.</p>
           <div className="flex gap-4">
-            <span className="hover:text-slate-400 cursor-pointer">SCTE-35 & OpenRTB 3.0 Verified</span>
+            <span className="hover:text-stone-400 cursor-pointer">SCTE-35 & OpenRTB 3.0 Verified</span>
             <span>•</span>
-            <span className="hover:text-slate-400 cursor-pointer">NBC Broadcast Code Compliant</span>
+            <span className="hover:text-stone-400 cursor-pointer">NBC Broadcast Code Compliant</span>
             <span>•</span>
-            <span className="hover:text-slate-400 cursor-pointer">NDPR / GDPR Protected</span>
+            <span className="hover:text-stone-400 cursor-pointer">NDPR / GDPR Protected</span>
           </div>
         </div>
       </footer>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 52" fill="none">
+  <title>MCS Media Cloud — Multimedia Cloud Solutions (for light backgrounds)</title>
+  <defs>
+    <linearGradient id="mcs-m" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDBA74" />
+      <stop offset="0.5" stop-color="#F97316" />
+      <stop offset="1" stop-color="#C2410C" />
+    </linearGradient>
+    <linearGradient id="mcs-core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF7ED" />
+      <stop offset="1" stop-color="#FBBF24" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(2, 2)">
+    <rect width="48" height="48" rx="12" fill="#0C0A09" />
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#F97316" stroke-opacity="0.35" stroke-width="1.5" />
+    <path d="M 14 12.5 Q 24 4.5 34 12.5" stroke="#FDBA74" stroke-opacity="0.35" stroke-width="1.6" stroke-linecap="round" />
+    <path d="M 18 14 Q 24 9 30 14" stroke="#FB923C" stroke-opacity="0.8" stroke-width="1.6" stroke-linecap="round" />
+    <polygon points="10,40 10,19 16.5,19 24,29.5 31.5,19 38,19 38,40 32,40 32,28.5 24,39 16,28.5 16,40" fill="url(#mcs-m)" />
+    <polygon points="24,29.5 31.5,19 38,19 38,40 32,40 32,28.5 24,39" fill="#FFFFFF" fill-opacity="0.12" />
+    <polygon points="24,19 27.5,22.5 24,26 20.5,22.5" fill="url(#mcs-core)" />
+  </g>
+
+  <g transform="translate(62, 0)">
+    <text x="0" y="27" font-family="'Space Grotesk', 'Segoe UI', Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1.5" fill="#1C1917">MCS</text>
+    <circle cx="58" cy="21" r="3" fill="#EA580C" />
+    <text x="70" y="23" font-family="'Space Grotesk', 'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" letter-spacing="1.2" fill="#C2410C">MEDIA CLOUD</text>
+    <text x="0" y="42" font-family="'Inter', 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="8.5" letter-spacing="2.2" fill="#57534E">MULTIMEDIA CLOUD SOLUTIONS</text>
+  </g>
+</svg>
