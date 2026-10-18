@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import MCSLogo from '@/components/MCSLogo';
 
 type Persona = 'founder_ceo' | 'cfo' | 'cto' | 'coo' | 'commercial';
 
@@ -256,18 +257,21 @@ export default function CommandCentre() {
     <main className="p-6 md:p-8 max-w-7xl mx-auto font-sans bg-gray-50 min-h-screen text-gray-900">
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-5 gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-              Multimedia Cloud Solutions — Operating System (MCS-OS)
-            </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-              v2.2 Production
-            </span>
+        <div className="flex items-center gap-3">
+          <MCSLogo variant="mark" size="lg" showLink={false} />
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+                Multimedia Cloud Solutions — Operating System (MCS-OS)
+              </h1>
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                v2.2 Production
+              </span>
+            </div>
+            <p className="text-gray-500 text-xs md:text-sm mt-1">
+              Autonomous Corporate Control Plane • Africa/Lagos (WAT) • Connected to ERPNext v15
+            </p>
           </div>
-          <p className="text-gray-500 text-xs md:text-sm mt-1">
-            Autonomous Corporate Control Plane • Africa/Lagos (WAT) • Connected to ERPNext v15
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2.5 items-center">

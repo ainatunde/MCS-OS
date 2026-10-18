@@ -2,8 +2,13 @@ import React from 'react';
 import './globals.css';
 
 export const metadata = {
-  title: 'MCS-OS Executive Command Centre',
-  description: 'Multimedia Cloud Solutions Autonomous Operating System v2.2',
+  title: 'Multimedia Cloud Solutions | MCS-OS',
+  description: 'Autonomous Media Infrastructure, Broadcast Playout, Dynamic Ad Insertion & Enterprise Operating System',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
