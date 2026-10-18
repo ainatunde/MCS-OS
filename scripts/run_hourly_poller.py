@@ -31,5 +31,14 @@ def run_loop(interval_seconds: int = 3600):
 
 
 if __name__ == "__main__":
-    interval = int(sys.argv[1]) if len(sys.argv) > 1 else 3600
-    run_loop(interval)
+    if len(sys.argv) > 1 and sys.argv[1] == "--once":
+        service = YouTubePollerService()
+        stats = service.sync_once()
+        print(
+            f"[{datetime.now(timezone.utc).isoformat()}] One-shot sync completed: "
+            f"{stats.channels_polled} channels, {stats.stars_polled} stars polled | "
+            f"{stats.clips_inserted} new clips, {stats.clips_updated} refreshed."
+        )
+    else:
+        interval = int(sys.argv[1]) if len(sys.argv) > 1 else 3600
+        run_loop(interval)
