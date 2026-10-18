@@ -18,11 +18,16 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
-# Confirmed active Nigerian broadcaster channel IDs
+# Confirmed active Nigerian broadcaster channel IDs & aliases
 BROADCASTER_REGISTRY: Dict[str, str] = {
     "channels_tv": "UCEXGDNclvmg6RW0vipJYsTQ",
+    "@channelsweb": "UCEXGDNclvmg6RW0vipJYsTQ",
+    "@channelstelevision": "UCEXGDNclvmg6RW0vipJYsTQ",
     "arise_news": "UCyEJX-kSj0kOOCS7Qlq2G7g",
+    "@AriseNewsChannel": "UCyEJX-kSj0kOOCS7Qlq2G7g",
     "tvc_news": "UCgp4A6I8LCWrhUzn-5SbKvA",
+    "@TVCNewsNigeria": "UCgp4A6I8LCWrhUzn-5SbKvA",
+    "@ntanewsnow": "UC0tZqgM5UfJdK4gGjQhU9vg",
 }
 
 
