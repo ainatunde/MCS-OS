@@ -1,7 +1,7 @@
 {
   "name": "pulzz-sdk",
   "version": "0.1.0",
-  "description": "Official JavaScript/TypeScript SDK for Pulzz — African Broadcast Intelligence & Ratings (pulzz.stream)",
+  "description": "Official JavaScript/TypeScript SDK for Pulzz — African TV & FM Broadcast Intelligence, EPG & Star Rankings (pulzz.stream)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 0"
@@ -9,11 +9,12 @@
   "keywords": [
     "pulzz",
     "broadcast",
-    "ratings",
-    "telemetry",
-    "scte35",
+    "epg",
+    "tv-guide",
+    "radio",
+    "star-rankings",
     "africa",
-    "media"
+    "media-intelligence"
   ],
   "author": "Multimedia Cloud Solutions <pulzz@mcsolutions.ng>",
   "contributors": [

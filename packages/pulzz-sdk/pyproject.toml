@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pulzz-sdk"
 version = "0.1.0"
-description = "Official Python SDK for Pulzz — African Broadcast Intelligence, SCTE-35 DAI Auditing & Real-Time Ratings"
+description = "Official Python SDK for Pulzz — African TV & FM Broadcast Intelligence, EPG & Star Rankings"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Proprietary" }
@@ -15,7 +15,7 @@ authors = [
 maintainers = [
     { name = "MCS Identity Governance", email = "identities@mcsolutions.ng" }
 ]
-keywords = ["broadcast", "ratings", "scte-35", "watermarking", "pulzz", "africa", "ad-intelligence"]
+keywords = ["broadcast", "epg", "tv-guide", "radio", "pulzz", "africa", "talent-rankings", "media-intelligence"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

@@ -1,9 +1,9 @@
 # Pulzz SDK for Python
 
-The official Python client library for **Pulzz** ([pulzz.stream](https://pulzz.stream)), the African Broadcast & Media Intelligence platform by Multimedia Cloud Solutions (MCS).
+The official Python client library for **Pulzz** ([pulzz.stream](https://pulzz.stream)), the African TV & FM broadcast intelligence, electronic program guide (EPG), and star rankings platform by Multimedia Cloud Solutions (MCS).
 
 ## Overview
-Pulzz provides second-by-second acoustic watermarking, automated broadcast compliance verification, real-time television audience ratings, and deterministic SCTE-35 dynamic ad insertion (DAI) reconciliation across 1,420+ African linear and digital feeds.
+Pulzz provides real-time broadcast schedules, 24h electronic programming guides, on-air tracking, star popularity rankings, carriage platform drift monitoring, and audience demand insights across 1,420+ African linear and digital feeds in Nigeria, Ghana, Kenya, and South Africa.
 
 ## Installation
 ```bash
