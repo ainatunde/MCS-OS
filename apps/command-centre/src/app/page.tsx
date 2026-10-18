@@ -254,21 +254,21 @@ export default function CommandCentre() {
   });
 
   return (
-    <main className="p-6 md:p-8 max-w-7xl mx-auto font-sans bg-gray-50 min-h-screen text-gray-900">
+    <main className="p-6 md:p-8 max-w-7xl mx-auto font-sans bg-stone-50 min-h-screen text-stone-900">
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-5 gap-4">
         <div className="flex items-center gap-3">
           <MCSLogo variant="mark" size="lg" showLink={false} />
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-stone-900">
                 Multimedia Cloud Solutions — Operating System (MCS-OS)
               </h1>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-orange-100 text-orange-800 border border-orange-200">
                 v2.2 Production
               </span>
             </div>
-            <p className="text-gray-500 text-xs md:text-sm mt-1">
+            <p className="text-stone-500 text-xs md:text-sm mt-1">
               Autonomous Corporate Control Plane • Africa/Lagos (WAT) • Connected to ERPNext v15
             </p>
           </div>
@@ -276,35 +276,35 @@ export default function CommandCentre() {
 
         <div className="flex flex-wrap gap-2.5 items-center">
           {/* Executive Persona Switcher */}
-          <div className="flex items-center bg-white border border-slate-300 rounded-lg p-1 text-xs font-medium shadow-sm">
-            <span className="text-gray-400 px-2 font-semibold">Role:</span>
+          <div className="flex items-center bg-white border border-stone-300 rounded-lg p-1 text-xs font-medium shadow-sm">
+            <span className="text-stone-400 px-2 font-semibold">Role:</span>
             <button
               onClick={() => setActivePersona('founder_ceo')}
-              className={`px-2.5 py-1 rounded transition ${activePersona === 'founder_ceo' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1 rounded transition ${activePersona === 'founder_ceo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CEO
             </button>
             <button
               onClick={() => setActivePersona('cfo')}
-              className={`px-2.5 py-1 rounded transition ${activePersona === 'cfo' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1 rounded transition ${activePersona === 'cfo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CFO
             </button>
             <button
               onClick={() => setActivePersona('cto')}
-              className={`px-2.5 py-1 rounded transition ${activePersona === 'cto' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1 rounded transition ${activePersona === 'cto' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CTO
             </button>
             <button
               onClick={() => setActivePersona('coo')}
-              className={`px-2.5 py-1 rounded transition ${activePersona === 'coo' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1 rounded transition ${activePersona === 'coo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               COO
             </button>
             <button
               onClick={() => setActivePersona('commercial')}
-              className={`px-2.5 py-1 rounded transition ${activePersona === 'commercial' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1 rounded transition ${activePersona === 'commercial' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CCO
             </button>
@@ -313,7 +313,7 @@ export default function CommandCentre() {
           {/* Team Logins Directory Modal Trigger */}
           <button
             onClick={() => setShowTeamModal(true)}
-            className="px-3 py-1.5 bg-white border border-slate-300 hover:border-slate-400 text-slate-700 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white border border-stone-300 hover:border-stone-400 text-stone-700 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             Team Logins
@@ -322,7 +322,7 @@ export default function CommandCentre() {
           {/* Products & Solutions Showcase */}
           <Link
             href="/products"
-            className="px-3 py-1.5 bg-cyan-50 border border-cyan-300 hover:bg-cyan-100 text-cyan-900 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
+            className="px-3 py-1.5 bg-orange-50 border border-orange-300 hover:bg-orange-100 text-orange-900 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
           >
             <span>Products & Solutions</span>
             <span>→</span>
@@ -333,7 +333,7 @@ export default function CommandCentre() {
             href={activeMember.erp_desk_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-100 transition flex items-center gap-1"
+            className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100 transition flex items-center gap-1"
           >
             <span>Open ERPDesk ({activeMember.role_code})</span>
             <span>↗</span>
@@ -352,33 +352,33 @@ export default function CommandCentre() {
       </header>
 
       {/* Active Persona Banner & Account Profile */}
-      <section className="mb-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-4 md:p-5 shadow-sm border border-slate-800">
+      <section className="mb-6 bg-gradient-to-r from-stone-900 via-orange-950 to-stone-900 text-white rounded-xl p-4 md:p-5 shadow-sm border border-stone-800">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-inner">
+            <div className="w-11 h-11 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-lg text-white shadow-inner">
               {activeMember.role_code}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base">{activeMember.title}</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono border border-indigo-400/20">
+                <span className="text-xs px-2 py-0.5 rounded bg-orange-500/30 text-orange-200 font-mono border border-orange-400/20">
                   {activeMember.email}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className="text-xs text-stone-300 mt-1">
                 Accountable Mandate: <span className="text-white font-medium">{activeMember.department}</span>
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2 text-xs">
-            <div className="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">X-MCS-Actor Header</span>
+            <div className="bg-stone-800/80 px-3 py-1.5 rounded-lg border border-stone-700">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">X-MCS-Actor Header</span>
               <code className="text-emerald-400 font-bold">{activePersona}</code>
             </div>
-            <div className="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">ERPNext User Role</span>
-              <span className="text-indigo-200">{activeMember.roles.split(',')[0]}</span>
+            <div className="bg-stone-800/80 px-3 py-1.5 rounded-lg border border-stone-700">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">ERPNext User Role</span>
+              <span className="text-orange-200">{activeMember.roles.split(',')[0]}</span>
             </div>
           </div>
         </div>
@@ -399,26 +399,26 @@ export default function CommandCentre() {
       <section className="mb-8">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900">Portfolio Product Matrix (8 Active Ventures)</h2>
+            <h2 className="text-lg font-bold text-stone-900">Portfolio Product Matrix (8 Active Ventures)</h2>
             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               ● 8 of 8 Healthy
             </span>
           </div>
-          <span className="text-xs text-slate-500">Autonomous Microservices & Adaptors</span>
+          <span className="text-xs text-stone-500">Autonomous Microservices & Adaptors</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           {products.map(p => (
-            <div key={p.slug} className={`p-3.5 bg-white rounded-lg border shadow-xs transition ${activeHalts.includes(p.slug) ? 'border-red-400 bg-red-50/50' : 'hover:border-slate-300'}`}>
+            <div key={p.slug} className={`p-3.5 bg-white rounded-lg border shadow-xs transition ${activeHalts.includes(p.slug) ? 'border-red-400 bg-red-50/50' : 'hover:border-stone-300'}`}>
               <div className="flex justify-between items-start">
-                <span className="font-semibold text-xs text-slate-900">{p.name}</span>
+                <span className="font-semibold text-xs text-stone-900">{p.name}</span>
                 <span className={`h-2.5 w-2.5 rounded-full ${activeHalts.includes(p.slug) ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} title={activeHalts.includes(p.slug) ? 'HALTED' : 'Healthy'}></span>
               </div>
-              <p className="text-[11px] font-mono text-gray-400 mt-1">{p.slug}</p>
-              <div className="mt-3 flex justify-between items-center pt-2 border-t border-slate-100">
-                <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{p.version}</span>
+              <p className="text-[11px] font-mono text-stone-400 mt-1">{p.slug}</p>
+              <div className="mt-3 flex justify-between items-center pt-2 border-t border-stone-100">
+                <span className="text-[11px] font-mono bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">{p.version}</span>
                 <button
                   onClick={() => toggleHalt(p.slug)}
-                  className={`text-[11px] font-semibold ${activeHalts.includes(p.slug) ? 'text-red-700 hover:text-red-900' : 'text-slate-500 hover:text-red-600'}`}
+                  className={`text-[11px] font-semibold ${activeHalts.includes(p.slug) ? 'text-red-700 hover:text-red-900' : 'text-stone-500 hover:text-red-600'}`}
                 >
                   {activeHalts.includes(p.slug) ? 'Lift Halt' : 'Halt'}
                 </button>
@@ -429,30 +429,30 @@ export default function CommandCentre() {
       </section>
 
       {/* Decision Inbox (Filtered by Role Mandate) */}
-      <section className="mb-8 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+      <section className="mb-8 bg-white rounded-xl border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-3 gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900">Decision Inbox & Sign-Offs</h2>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <h2 className="text-lg font-bold text-stone-900">Decision Inbox & Sign-Offs</h2>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
                 {filteredApprovals.length} Pending
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Filtered for <span className="font-semibold text-slate-700">{activeMember.title}</span> • Standing A0/A1/A2 routines bypass this queue automatically
+            <p className="text-xs text-stone-500 mt-0.5">
+              Filtered for <span className="font-semibold text-stone-700">{activeMember.title}</span> • Standing A0/A1/A2 routines bypass this queue automatically
             </p>
           </div>
 
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium">
+          <div className="flex items-center bg-stone-100 p-0.5 rounded-lg text-xs font-medium">
             <button
               onClick={() => setInboxTab('my_mandate')}
-              className={`px-3 py-1 rounded-md transition ${inboxTab === 'my_mandate' ? 'bg-white shadow-xs font-bold text-indigo-700' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-3 py-1 rounded-md transition ${inboxTab === 'my_mandate' ? 'bg-white shadow-xs font-bold text-orange-700' : 'text-stone-600 hover:text-stone-900'}`}
             >
               My Mandate ({approvals.filter(a => activePersona === 'founder_ceo' || a.mandate_roles.includes(activePersona)).length})
             </button>
             <button
               onClick={() => setInboxTab('all')}
-              className={`px-3 py-1 rounded-md transition ${inboxTab === 'all' ? 'bg-white shadow-xs font-bold text-indigo-700' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-3 py-1 rounded-md transition ${inboxTab === 'all' ? 'bg-white shadow-xs font-bold text-orange-700' : 'text-stone-600 hover:text-stone-900'}`}
             >
               All Corporate ({approvals.length})
             </button>
@@ -460,22 +460,22 @@ export default function CommandCentre() {
         </div>
 
         {filteredApprovals.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-            <p className="text-sm font-medium text-slate-600">Inbox Zero for {activeMember.role_code}!</p>
-            <p className="text-xs text-slate-400 mt-1">All operations in your department are running within autonomous policy limits.</p>
+          <div className="text-center py-10 bg-stone-50 rounded-lg border border-dashed border-stone-200">
+            <p className="text-sm font-medium text-stone-600">Inbox Zero for {activeMember.role_code}!</p>
+            <p className="text-xs text-stone-400 mt-1">All operations in your department are running within autonomous policy limits.</p>
           </div>
         ) : (
           <div className="space-y-3.5">
             {filteredApprovals.map(req => {
               const hasDirectMandate = activePersona === 'founder_ceo' || req.mandate_roles.includes(activePersona);
               return (
-                <div key={req.id} className={`p-4 border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition ${hasDirectMandate ? 'border-slate-200 bg-white hover:border-indigo-200' : 'border-slate-200/60 bg-slate-50/50'}`}>
+                <div key={req.id} className={`p-4 border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition ${hasDirectMandate ? 'border-stone-200 bg-white hover:border-orange-200' : 'border-stone-200/60 bg-stone-50/50'}`}>
                   <div className="flex-1">
                     <div className="flex flex-wrap gap-2 items-center">
-                      <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-mono font-bold rounded">
+                      <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-mono font-bold rounded">
                         {req.department}
                       </span>
-                      <span className="text-xs font-semibold text-slate-700">{req.action_type}</span>
+                      <span className="text-xs font-semibold text-stone-700">{req.action_type}</span>
                       {req.amount_usd && (
                         <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded">
                           ${req.amount_usd.toLocaleString()} USD
@@ -486,34 +486,34 @@ export default function CommandCentre() {
                           ✓ Sign-off Mandate
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-medium rounded">
+                        <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] font-medium rounded">
                           Informational (Escalated to CEO/CFO)
                         </span>
                       )}
                     </div>
-                    <h4 className="font-semibold text-sm text-slate-900 mt-1.5">{req.title}</h4>
-                    <p className="text-xs text-gray-600 mt-0.5">{req.proposed_effect}</p>
-                    <p className="text-[11px] font-mono text-gray-400 mt-1">Evidence Hash: {req.evidence_hash}</p>
+                    <h4 className="font-semibold text-sm text-stone-900 mt-1.5">{req.title}</h4>
+                    <p className="text-xs text-stone-600 mt-0.5">{req.proposed_effect}</p>
+                    <p className="text-[11px] font-mono text-stone-400 mt-1">Evidence Hash: {req.evidence_hash}</p>
                   </div>
 
                   <div className="flex gap-2 w-full md:w-auto justify-end">
                     <button
                       onClick={() => handleDecision(req.id, 'approve_content')}
-                      className="px-3 py-1.5 border border-indigo-600 text-indigo-600 text-xs font-semibold rounded-lg hover:bg-indigo-50 transition"
+                      className="px-3 py-1.5 border border-orange-600 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-50 transition"
                       title="Approves text/content without releasing execution queue"
                     >
                       Approve Content
                     </button>
                     <button
                       onClick={() => handleDecision(req.id, 'approve_and_send')}
-                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition shadow-xs"
+                      className="px-3 py-1.5 bg-orange-600 text-white text-xs font-semibold rounded-lg hover:bg-orange-700 transition shadow-xs"
                       title="Authorizes execution and releases send queue"
                     >
                       Approve & Send
                     </button>
                     <button
                       onClick={() => handleDecision(req.id, 'deny')}
-                      className="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-100 transition"
+                      className="px-3 py-1.5 border border-stone-300 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-100 transition"
                     >
                       Deny
                     </button>
@@ -526,13 +526,13 @@ export default function CommandCentre() {
       </section>
 
       {/* Executive Leadership & Chartered Departments (D01-D11) */}
-      <section className="mb-8 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+      <section className="mb-8 bg-white rounded-xl border border-stone-200 p-5 shadow-xs">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Department Charters & Leadership (D01–D11)</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Authoritative PostgreSQL 16 Catalog • Highlighted for active role: <span className="font-semibold text-indigo-700">{activeMember.role_code}</span></p>
+            <h2 className="text-lg font-bold text-stone-900">Department Charters & Leadership (D01–D11)</h2>
+            <p className="text-xs text-stone-500 mt-0.5">Authoritative PostgreSQL 16 Catalog • Highlighted for active role: <span className="font-semibold text-orange-700">{activeMember.role_code}</span></p>
           </div>
-          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold border border-indigo-200">
+          <span className="text-xs font-mono bg-orange-50 text-orange-700 px-3 py-1 rounded-full font-semibold border border-orange-200">
             {activePersona.toUpperCase()} View
           </span>
         </div>
@@ -544,27 +544,27 @@ export default function CommandCentre() {
                 key={dept.code}
                 className={`p-3.5 border rounded-lg transition ${
                   isOwned
-                    ? 'border-indigo-400 bg-indigo-50/20 shadow-xs ring-1 ring-indigo-300/40'
-                    : 'border-slate-200 bg-slate-50/40 opacity-70 hover:opacity-100'
+                    ? 'border-orange-400 bg-orange-50/20 shadow-xs ring-1 ring-orange-300/40'
+                    : 'border-stone-200 bg-stone-50/40 opacity-70 hover:opacity-100'
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
+                    <span className="text-xs font-mono font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
                       {dept.code}
                     </span>
                     {isOwned && (
-                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                      <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200">
                         Your Mandate
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-semibold text-gray-700">{dept.executive}</span>
+                  <span className="text-xs font-semibold text-stone-700">{dept.executive}</span>
                 </div>
-                <p className="text-xs font-bold text-gray-900 mt-2">{dept.name}</p>
-                <div className="flex justify-between items-center text-[11px] text-gray-500 mt-3 pt-2 border-t border-gray-200/60">
-                  <span>Accountable: <code className="text-slate-800 font-semibold">{dept.accountable_role}</code></span>
-                  <span className="font-semibold text-gray-600">Max: {dept.authority_ceiling} (${dept.daily_budget_usd}/d)</span>
+                <p className="text-xs font-bold text-stone-900 mt-2">{dept.name}</p>
+                <div className="flex justify-between items-center text-[11px] text-stone-500 mt-3 pt-2 border-t border-stone-200/60">
+                  <span>Accountable: <code className="text-stone-800 font-semibold">{dept.accountable_role}</code></span>
+                  <span className="font-semibold text-stone-600">Max: {dept.authority_ceiling} (${dept.daily_budget_usd}/d)</span>
                 </div>
               </div>
             );
@@ -576,107 +576,107 @@ export default function CommandCentre() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {activePersona === 'cfo' ? (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Treasury Invoiced Balance</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">₦14,850,000 <span className="text-xs font-normal text-gray-400">NGN</span></p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Treasury Invoiced Balance</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">₦14,850,000 <span className="text-xs font-normal text-stone-400">NGN</span></p>
               <p className="text-xs text-emerald-600 mt-3 font-medium">● Reconciled with ERPNext v15 Accounting</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Finance Department AI Burn</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$2.14 <span className="text-xs font-normal text-gray-400">/ $10.00 ceiling</span></p>
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                <div className="bg-indigo-600 h-2" style={{ width: '21.4%' }}></div>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Finance Department AI Burn</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$2.14 <span className="text-xs font-normal text-stone-400">/ $10.00 ceiling</span></p>
+              <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-orange-600 h-2" style={{ width: '21.4%' }}></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">D06 + D10 procurement governance</p>
+              <p className="text-xs text-stone-500 mt-2">D06 + D10 procurement governance</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Revenue Payout Reserves</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$125,000 <span className="text-xs font-normal text-gray-400">USD</span></p>
-              <p className="text-xs text-slate-500 mt-3">Segregated channel owner escrow (D11 Audited)</p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Revenue Payout Reserves</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$125,000 <span className="text-xs font-normal text-stone-400">USD</span></p>
+              <p className="text-xs text-stone-500 mt-3">Segregated channel owner escrow (D11 Audited)</p>
             </div>
           </>
         ) : activePersona === 'cto' ? (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Edge Service Health</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">8 / 8 <span className="text-xs font-normal text-emerald-600">Active</span></p>
-              <p className="text-xs text-slate-500 mt-3">Lagos, Johannesburg, Nairobi POPs online</p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Edge Service Health</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">8 / 8 <span className="text-xs font-normal text-emerald-600">Active</span></p>
+              <p className="text-xs text-stone-500 mt-3">Lagos, Johannesburg, Nairobi POPs online</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Engineering AI Burn</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$4.18 <span className="text-xs font-normal text-gray-400">/ $30.00 ceiling</span></p>
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                <div className="bg-indigo-600 h-2" style={{ width: '13.9%' }}></div>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Engineering AI Burn</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$4.18 <span className="text-xs font-normal text-stone-400">/ $30.00 ceiling</span></p>
+              <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-orange-600 h-2" style={{ width: '13.9%' }}></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">D05 Engineering & Code Generation</p>
+              <p className="text-xs text-stone-500 mt-2">D05 Engineering & Code Generation</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">CI/CD Continuous Deployment</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">Coolify <span className="text-xs font-normal text-gray-400">Automated</span></p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">CI/CD Continuous Deployment</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">Coolify <span className="text-xs font-normal text-stone-400">Automated</span></p>
               <p className="text-xs text-emerald-600 mt-3">● Zero-downtime rolling reload</p>
             </div>
           </>
         ) : activePersona === 'commercial' ? (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Product Pipelines</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">7 Product Lines <span className="text-xs font-normal text-gray-400">+ ERP</span></p>
-              <p className="text-xs text-slate-500 mt-3">SSAI, ADX OpenRTB, TV-Insights Live</p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Active Product Pipelines</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">7 Product Lines <span className="text-xs font-normal text-stone-400">+ ERP</span></p>
+              <p className="text-xs text-stone-500 mt-3">SSAI, ADX OpenRTB, TV-Insights Live</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commercial AI Burn</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$0.90 <span className="text-xs font-normal text-gray-400">/ $25.00 ceiling</span></p>
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                <div className="bg-indigo-600 h-2" style={{ width: '3.6%' }}></div>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Commercial AI Burn</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$0.90 <span className="text-xs font-normal text-stone-400">/ $25.00 ceiling</span></p>
+              <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-orange-600 h-2" style={{ width: '3.6%' }}></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">D02 Commercial & D03 Marketing campaigns</p>
+              <p className="text-xs text-stone-500 mt-2">D02 Commercial & D03 Marketing campaigns</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">CRM Lead Ingestion</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">100% Synced <span className="text-xs font-normal text-emerald-600">Active</span></p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">CRM Lead Ingestion</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">100% Synced <span className="text-xs font-normal text-emerald-600">Active</span></p>
               <p className="text-xs text-emerald-600 mt-3">● Pulzz $\rightarrow$ ERPNext Automated Lead Sync</p>
             </div>
           </>
         ) : activePersona === 'coo' ? (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Operational Ingest Status</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">1,420 Feeds <span className="text-xs font-normal text-emerald-600">Active</span></p>
-              <p className="text-xs text-slate-500 mt-3">TV-Insights crawlers + EPG ingestion active</p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Operational Ingest Status</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">1,420 Feeds <span className="text-xs font-normal text-emerald-600">Active</span></p>
+              <p className="text-xs text-stone-500 mt-3">TV-Insights crawlers + EPG ingestion active</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Operations AI Burn</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$1.20 <span className="text-xs font-normal text-gray-400">/ $15.00 ceiling</span></p>
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                <div className="bg-indigo-600 h-2" style={{ width: '8.0%' }}></div>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Operations AI Burn</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$1.20 <span className="text-xs font-normal text-stone-400">/ $15.00 ceiling</span></p>
+              <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-orange-600 h-2" style={{ width: '8.0%' }}></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">D01 Executive Ops & D07 Customer Support</p>
+              <p className="text-xs text-stone-500 mt-2">D01 Executive Ops & D07 Customer Support</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendor SLA Compliance</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">99.98% <span className="text-xs font-normal text-emerald-600">Verified</span></p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Vendor SLA Compliance</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">99.98% <span className="text-xs font-normal text-emerald-600">Verified</span></p>
               <p className="text-xs text-emerald-600 mt-3">● Full compliance across telecom & CDN suppliers</p>
             </div>
           </>
         ) : (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Daily AI Model Spend</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">$8.42 <span className="text-xs font-normal text-gray-400">/ $50.00 ceiling</span></p>
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-                <div className="bg-indigo-600 h-2" style={{ width: '16.8%' }}></div>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Daily AI Model Spend</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">$8.42 <span className="text-xs font-normal text-stone-400">/ $50.00 ceiling</span></p>
+              <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-orange-600 h-2" style={{ width: '16.8%' }}></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Recovery reservations protected (D11 Guardian)</p>
+              <p className="text-xs text-stone-500 mt-2">Recovery reservations protected (D11 Guardian)</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Authoritative ERP Balances</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">₦14,850,000 <span className="text-xs font-normal text-gray-400">Invoiced</span></p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Authoritative ERP Balances</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">₦14,850,000 <span className="text-xs font-normal text-stone-400">Invoiced</span></p>
               <p className="text-xs text-emerald-600 mt-3 font-medium">● Synced with ainatunde/MCS-ERP (ERPNext)</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assurance & Acceptance</h3>
-              <p className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">20 / 20 <span className="text-xs font-normal text-gray-400">L01–L20 Qualified</span></p>
-              <p className="text-xs text-gray-500 mt-3">Zero waivers permitted • Continuous Guardian audit</p>
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-xs">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Assurance & Acceptance</h3>
+              <p className="text-2xl md:text-3xl font-bold mt-2 text-stone-900">20 / 20 <span className="text-xs font-normal text-stone-400">L01–L20 Qualified</span></p>
+              <p className="text-xs text-stone-500 mt-3">Zero waivers permitted • Continuous Guardian audit</p>
             </div>
           </>
         )}
@@ -684,16 +684,16 @@ export default function CommandCentre() {
 
       {/* Team Logins & Access Credentials Modal */}
       {showTeamModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b pb-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">MCS Executive Team Logins</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Authoritative ERPNext v15 System Accounts (Live at erp.mcsolutions.stream)</p>
+                <h3 className="text-xl font-bold text-stone-900">MCS Executive Team Logins</h3>
+                <p className="text-xs text-stone-500 mt-0.5">Authoritative ERPNext v15 System Accounts (Live at erp.mcsolutions.stream)</p>
               </div>
               <button
                 onClick={() => setShowTeamModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1"
+                className="text-stone-400 hover:text-stone-600 text-lg font-bold p-1"
               >
                 ✕
               </button>
@@ -701,31 +701,31 @@ export default function CommandCentre() {
 
             <div className="mt-4 space-y-3">
               {teamMembers.map(member => (
-                <div key={member.email} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div key={member.email} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                      <span className="font-bold text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-800">
                         {member.role_code}
                       </span>
-                      <span className="font-semibold text-sm text-slate-900">{member.title}</span>
+                      <span className="font-semibold text-sm text-stone-900">{member.title}</span>
                     </div>
-                    <div className="text-xs text-slate-600 mt-1 flex flex-col gap-0.5">
-                      <span>Email: <code className="text-indigo-600 font-semibold">{member.email}</code></span>
+                    <div className="text-xs text-stone-600 mt-1 flex flex-col gap-0.5">
+                      <span>Email: <code className="text-orange-600 font-semibold">{member.email}</code></span>
                       <span>Password: <code className="text-emerald-700 font-mono font-semibold">{member.password_hint}</code></span>
-                      <span className="text-[11px] text-gray-500">Roles: {member.roles}</span>
+                      <span className="text-[11px] text-stone-500">Roles: {member.roles}</span>
                     </div>
                   </div>
 
                   <div className="flex gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => copyToClipboard(member.email, `email-${member.email}`)}
-                      className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
+                      className="px-2.5 py-1.5 bg-white border border-stone-300 hover:bg-stone-100 rounded text-xs font-medium text-stone-700 transition"
                     >
                       {copiedKey === `email-${member.email}` ? 'Copied Email!' : 'Copy Email'}
                     </button>
                     <button
                       onClick={() => copyToClipboard(member.password_hint, `pwd-${member.email}`)}
-                      className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
+                      className="px-2.5 py-1.5 bg-white border border-stone-300 hover:bg-stone-100 rounded text-xs font-medium text-stone-700 transition"
                     >
                       {copiedKey === `pwd-${member.email}` ? 'Copied Pwd!' : 'Copy Pwd'}
                     </button>
@@ -733,7 +733,7 @@ export default function CommandCentre() {
                       href={member.erp_desk_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition"
+                      className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition"
                     >
                       Login ↗
                     </a>
@@ -742,11 +742,11 @@ export default function CommandCentre() {
               ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t flex justify-between items-center text-xs text-gray-500">
-              <span>Host URL: <code className="text-indigo-600 font-mono">https://erp.mcsolutions.stream/app</code></span>
+            <div className="mt-6 pt-4 border-t flex justify-between items-center text-xs text-stone-500">
+              <span>Host URL: <code className="text-orange-600 font-mono">https://erp.mcsolutions.stream/app</code></span>
               <button
                 onClick={() => setShowTeamModal(false)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition"
+                className="px-4 py-2 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 transition"
               >
                 Close
               </button>
