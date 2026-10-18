@@ -57,6 +57,27 @@ interface TeamMember {
   erp_desk_url: string;
 }
 
+interface ExecutiveDirective {
+  directive_id: string;
+  target_role: string;
+  target_title: string;
+  directive_type: 'strategic_priority' | 'policy_update' | 'immediate_action' | 'executive_memo';
+  priority: 'routine' | 'high' | 'critical';
+  title: string;
+  instructions: string;
+  deliverables?: string;
+  deadline?: string;
+  standing_authority_impact?: string;
+  sync_erp_task: boolean;
+  erp_task_id?: string;
+  issuer: string;
+  issuer_title: string;
+  status: 'issued' | 'acknowledged' | 'in_progress' | 'completed' | 'revoked';
+  created_at: string;
+  acknowledged_at?: string | null;
+  acknowledged_by?: string | null;
+}
+
 export default function CommandCentre() {
   const [activePersona, setActivePersona] = useState<Persona>('founder_ceo');
   const [inboxTab, setInboxTab] = useState<'my_mandate' | 'all'>('my_mandate');
@@ -64,6 +85,61 @@ export default function CommandCentre() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [auditLog, setAuditLog] = useState<string[]>([]);
   const [activeHalts, setActiveHalts] = useState<string[]>([]);
+
+  // Executive Directive Dispatcher State
+  const [directives, setDirectives] = useState<ExecutiveDirective[]>([
+    {
+      directive_id: 'dir-20261018-001',
+      target_role: 'cto',
+      target_title: 'Chief Technology Officer (CTO)',
+      directive_type: 'strategic_priority',
+      priority: 'critical',
+      title: 'Aether ADX OpenRTB 3.0 SSP Latency Target (<5ms p99)',
+      instructions: 'Audit RTB exchange request pipelines across Lagos and Johannesburg edge POPs. Optimize Valkey dynamic floor caches and ensure OpenRTB 3.0 serialized auction responses execute under 5ms at peak evening broadcast load.',
+      deliverables: 'Benchmark latency telemetry report, cache concurrency tuning commits, and 100-event stress test log.',
+      deadline: '2026-10-25',
+      sync_erp_task: true,
+      erp_task_id: 'TASK-2026-0042',
+      issuer: 'founder_ceo',
+      issuer_title: 'Founder & CEO',
+      status: 'in_progress',
+      created_at: '2026-10-18T09:00:00Z',
+      acknowledged_at: '2026-10-18T09:15:00Z',
+      acknowledged_by: 'cto@mcsolutions.stream',
+    },
+    {
+      directive_id: 'dir-20261018-002',
+      target_role: 'commercial',
+      target_title: 'Chief Commercial Officer (CCO)',
+      directive_type: 'policy_update',
+      priority: 'high',
+      title: 'Broadcaster Onboarding Rev-Share Terms Approval Thresholds',
+      instructions: 'Maintain standard 40/15/45 rev-share split for linear tier-2 broadcasters. Any custom concession exceeding 5% margin for tier-1 national networks requires explicit A3 CEO approval in Decision Inbox before issuing formal quotation.',
+      deliverables: 'Updated ERPNext quotation templates and sales enablement guide for Q4 pipeline.',
+      deadline: '2026-10-22',
+      sync_erp_task: true,
+      erp_task_id: 'TASK-2026-0043',
+      issuer: 'founder_ceo',
+      issuer_title: 'Founder & CEO',
+      status: 'acknowledged',
+      created_at: '2026-10-18T10:30:00Z',
+      acknowledged_at: '2026-10-18T11:00:00Z',
+      acknowledged_by: 'commercial@mcsolutions.stream',
+    },
+  ]);
+
+  const [showDirectiveForm, setShowDirectiveForm] = useState<boolean>(false);
+  const [directiveForm, setDirectiveForm] = useState({
+    target_role: 'all',
+    directive_type: 'strategic_priority' as const,
+    priority: 'high' as const,
+    title: '',
+    instructions: '',
+    deliverables: '',
+    deadline: '',
+    sync_erp_task: true,
+  });
+  const [directiveFeedback, setDirectiveFeedback] = useState<string | null>(null);
 
   const [products] = useState<ProductHealth[]>([
     { slug: 'cloudstream-vcp', name: 'CloudStream VCP', status: 'healthy', version: 'v1' },
@@ -243,6 +319,119 @@ export default function CommandCentre() {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleIssueDirective = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directiveForm.title.trim() || !directiveForm.instructions.trim()) {
+      alert('Please provide a directive title and instructions.');
+      return;
+    }
+
+    const roleMap: Record<string, string> = {
+      all: 'Company-Wide (All Charters D01–D11)',
+      cto: 'Chief Technology Officer (CTO)',
+      cfo: 'Chief Financial Officer (CFO)',
+      coo: 'Chief Operating Officer (COO)',
+      commercial: 'Chief Commercial Officer (CCO)',
+      support: 'Customer Success Lead',
+    };
+
+    const newDirective: ExecutiveDirective = {
+      directive_id: `dir-${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}`,
+      target_role: directiveForm.target_role,
+      target_title: roleMap[directiveForm.target_role] || `Department ${directiveForm.target_role}`,
+      directive_type: directiveForm.directive_type,
+      priority: directiveForm.priority,
+      title: directiveForm.title.trim(),
+      instructions: directiveForm.instructions.trim(),
+      deliverables: directiveForm.deliverables.trim() || undefined,
+      deadline: directiveForm.deadline || undefined,
+      sync_erp_task: directiveForm.sync_erp_task,
+      erp_task_id: directiveForm.sync_erp_task ? `TASK-2026-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
+      issuer: activePersona,
+      issuer_title: activeMember.title,
+      status: 'issued',
+      created_at: new Date().toISOString(),
+      acknowledged_at: null,
+      acknowledged_by: null,
+    };
+
+    setDirectives([newDirective, ...directives]);
+    setDirectiveFeedback(`Directive "${newDirective.title}" successfully dispatched to ${newDirective.target_title}`);
+    setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] DIRECTIVE DISPATCHED: "${newDirective.title}" -> ${newDirective.target_role.toUpperCase()}`, ...prev.slice(0, 4)]);
+
+    // Reset form
+    setDirectiveForm({
+      target_role: 'all',
+      directive_type: 'strategic_priority',
+      priority: 'high',
+      title: '',
+      instructions: '',
+      deliverables: '',
+      deadline: '',
+      sync_erp_task: true,
+    });
+    setTimeout(() => setDirectiveFeedback(null), 5000);
+
+    // Call Control API asynchronously
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
+      await fetch(`${apiUrl}/v1/directives`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-MCS-Actor': activePersona,
+        },
+        body: JSON.stringify(newDirective),
+      });
+    } catch (err) {
+      console.log('Directive persisted locally');
+    }
+  };
+
+  const handleUpdateDirectiveStatus = async (id: string, newStatus: ExecutiveDirective['status']) => {
+    setDirectives(directives.map(d => {
+      if (d.directive_id === id) {
+        return {
+          ...d,
+          status: newStatus,
+          acknowledged_at: newStatus === 'acknowledged' && !d.acknowledged_at ? new Date().toISOString() : d.acknowledged_at,
+          acknowledged_by: newStatus === 'acknowledged' ? activeMember.email : d.acknowledged_by,
+        };
+      }
+      return d;
+    }));
+
+    setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] Directive ${id} status updated to ${newStatus.toUpperCase()}`, ...prev.slice(0, 4)]);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
+      await fetch(`${apiUrl}/v1/directives/${id}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-MCS-Actor': activePersona,
+        },
+        body: JSON.stringify({ status: newStatus, actor: activeMember.email }),
+      });
+    } catch (err) {
+      console.log('Status updated locally');
+    }
+  };
+
+  const loadPreset = (preset: { target_role: string; type: any; priority: any; title: string; instructions: string; deliverables: string }) => {
+    setDirectiveForm({
+      target_role: preset.target_role,
+      directive_type: preset.type,
+      priority: preset.priority,
+      title: preset.title,
+      instructions: preset.instructions,
+      deliverables: preset.deliverables,
+      deadline: '2026-10-31',
+      sync_erp_task: true,
+    });
+    setShowDirectiveForm(true);
   };
 
   // Filter Decision Inbox
@@ -425,6 +614,374 @@ export default function CommandCentre() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Executive Strategic Directive Dispatcher (CEO Command Deck) */}
+      <section className="mb-8 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl border border-indigo-900/60 p-5 shadow-lg relative overflow-hidden">
+        {/* Glow ambient background effect */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-indigo-800/60 gap-3">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                  <span>Executive Strategic Directive Dispatcher</span>
+                  <span className="text-[10px] font-mono uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 px-2 py-0.5 rounded font-bold">
+                    CEO Authority
+                  </span>
+                </h2>
+              </div>
+              <p className="text-xs text-indigo-200/80 mt-1">
+                Issue binding strategic priorities, policy boundaries, and action mandates to CTO, CFO, CCO, COO, or Company-Wide charters.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDirectiveForm(!showDirectiveForm)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${
+                  showDirectiveForm
+                    ? 'bg-indigo-600 text-white border border-indigo-400'
+                    : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold'
+                }`}
+              >
+                <span>{showDirectiveForm ? 'Close Directive Form' : '+ Issue New Directive'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Strategy Presets Bar */}
+          <div className="mt-4 pt-1">
+            <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider block mb-2">
+              Quick Strategy Presets (Click to Load):
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => loadPreset({
+                  target_role: 'cto',
+                  type: 'strategic_priority',
+                  priority: 'critical',
+                  title: 'Aether ADX OpenRTB 3.0 Latency Target (<5ms p99)',
+                  instructions: 'Audit RTB auction engine pipelines across Lagos and Johannesburg edge POPs. Optimize Valkey dynamic floor caches and ensure OpenRTB 3.0 serialized auction responses execute under 5ms at peak evening broadcast load.',
+                  deliverables: 'Latency benchmark telemetry report, Valkey cache concurrency commits, and 100-event stress test log.',
+                })}
+                className="px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700/90 border border-indigo-700/50 text-[11px] text-cyan-300 transition flex items-center gap-1"
+              >
+                <span>⚡ OpenRTB 3.0 &lt;5ms (CTO)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => loadPreset({
+                  target_role: 'cfo',
+                  type: 'policy_update',
+                  priority: 'high',
+                  title: 'Cloud Infrastructure Spend Audit & Reserve Reallocation',
+                  instructions: 'Audit line-item compute invoices across Contabo VPS and GCP. Ensure AI model spending strictly conforms to the $15/day company ceiling and reconcile escrow balances with ERPNext General Ledger.',
+                  deliverables: 'Audited monthly cloud expense breakdown and GL reconciliation journal entry in ERPNext.',
+                })}
+                className="px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700/90 border border-indigo-700/50 text-[11px] text-emerald-300 transition flex items-center gap-1"
+              >
+                <span>💰 Cloud Spend & Reserves (CFO)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => loadPreset({
+                  target_role: 'commercial',
+                  type: 'policy_update',
+                  priority: 'high',
+                  title: 'Broadcaster Onboarding Rev-Share Terms Approval Thresholds',
+                  instructions: 'Enforce standard 40/15/45 rev-share schedule for all linear tier-2 broadcasters. Require explicit A3 CEO approval in Decision Inbox before issuing formal quotation with any custom concession exceeding 5% margin.',
+                  deliverables: 'Updated ERPNext quotation templates and sales enablement guide for Q4 pipeline.',
+                })}
+                className="px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700/90 border border-indigo-700/50 text-[11px] text-amber-300 transition flex items-center gap-1"
+              >
+                <span>🤝 40/15/45 Rev-Share Split (CCO)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => loadPreset({
+                  target_role: 'coo',
+                  type: 'immediate_action',
+                  priority: 'critical',
+                  title: 'Audit 24/7 SCTE-35 Frame-Accurate DAI Splice Logs & Watermarks',
+                  instructions: 'Audit second-by-second ad insertion logs on CloudStream VCP across all active feeds. Verify deterministic ad detection accuracy against TV-Insights Pulzz audio watermark database.',
+                  deliverables: 'Zero-error splice audit report and 90-day compliance verification archive.',
+                })}
+                className="px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700/90 border border-indigo-700/50 text-[11px] text-purple-300 transition flex items-center gap-1"
+              >
+                <span>🛡️ SCTE-35 & Watermark Audit (COO)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Feedback message */}
+          {directiveFeedback && (
+            <div className="mt-4 p-3 bg-emerald-950/80 border border-emerald-500/50 text-emerald-200 text-xs rounded-lg flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>{directiveFeedback}</span>
+            </div>
+          )}
+
+          {/* Collapsible / Expandable Directive Composer Form */}
+          {showDirectiveForm && (
+            <form onSubmit={handleIssueDirective} className="mt-5 p-4 md:p-5 bg-slate-800/90 rounded-xl border border-indigo-600/40 shadow-inner">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <span className="text-cyan-400">📝</span> Compose Strategic Directive
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Target Executive / Scope</label>
+                  <select
+                    value={directiveForm.target_role}
+                    onChange={e => setDirectiveForm({ ...directiveForm, target_role: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                  >
+                    <option value="all">Company-Wide (All Charters D01–D11)</option>
+                    <option value="cto">Chief Technology Officer (CTO) — D04, D05, D08</option>
+                    <option value="cfo">Chief Financial Officer (CFO) — D06, D10</option>
+                    <option value="commercial">Chief Commercial Officer (CCO) — D02, D03</option>
+                    <option value="coo">Chief Operating Officer (COO) — D01, D07</option>
+                    <option value="support">Customer Success & SLAs — D07</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Directive Class</label>
+                  <select
+                    value={directiveForm.directive_type}
+                    onChange={e => setDirectiveForm({ ...directiveForm, directive_type: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                  >
+                    <option value="strategic_priority">Strategic Priority (Sprint Focus)</option>
+                    <option value="policy_update">Policy / Budget Ceiling Update</option>
+                    <option value="immediate_action">Immediate Action Order (Urgent)</option>
+                    <option value="executive_memo">Executive Strategy Memo / Guidance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Urgency / Priority</label>
+                  <select
+                    value={directiveForm.priority}
+                    onChange={e => setDirectiveForm({ ...directiveForm, priority: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                  >
+                    <option value="routine">Routine (Standard Operating Queue)</option>
+                    <option value="high">High Priority (Next Cycle Review)</option>
+                    <option value="critical">Critical / Urgent (Blocker)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Directive Subject / Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Optimize Aether ADX DSP Latency to <5ms"
+                    value={directiveForm.title}
+                    onChange={e => setDirectiveForm({ ...directiveForm, title: e.target.value })}
+                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Target Horizon / Deadline</label>
+                  <input
+                    type="date"
+                    value={directiveForm.deadline}
+                    onChange={e => setDirectiveForm({ ...directiveForm, deadline: e.target.value })}
+                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3.5">
+                <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Instructions & Strategic Intent</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Detail the tactical objective, technical or financial requirements, expected behavior, and operational boundaries..."
+                  value={directiveForm.instructions}
+                  onChange={e => setDirectiveForm({ ...directiveForm, instructions: e.target.value })}
+                  className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                ></textarea>
+              </div>
+
+              <div className="mb-3.5">
+                <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Key Deliverables & Acceptance Criteria</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Telemetry benchmarks, signed audit log, ERPNext quotation template"
+                  value={directiveForm.deliverables}
+                  onChange={e => setDirectiveForm({ ...directiveForm, deliverables: e.target.value })}
+                  className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-indigo-700/40 gap-3">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-indigo-200">
+                  <input
+                    type="checkbox"
+                    checked={directiveForm.sync_erp_task}
+                    onChange={e => setDirectiveForm({ ...directiveForm, sync_erp_task: e.target.checked })}
+                    className="rounded border-indigo-700 text-cyan-500 focus:ring-cyan-400 h-4 w-4 bg-slate-900"
+                  />
+                  <span>Sync as Official Task in ERPNext Project Management</span>
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectiveForm(false)}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-bold rounded-lg text-xs shadow-md transition"
+                  >
+                    🚀 Broadcast Directive
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
+          {/* Active Directives Feed */}
+          <div className="mt-5 pt-4 border-t border-indigo-800/60">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Active Strategic Directives</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                  {directives.length} Issued
+                </span>
+              </div>
+              <span className="text-[11px] text-indigo-300">
+                Logged in Control API • Governed under Master Spec §4.1
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {directives.map(dir => (
+                <div
+                  key={dir.directive_id}
+                  className="p-3.5 bg-slate-800/70 border border-indigo-700/40 rounded-xl transition hover:border-indigo-500/70"
+                >
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-cyan-300 border border-cyan-400/30">
+                        {dir.directive_id}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        dir.target_role === 'cto'
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                          : dir.target_role === 'cfo'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                          : dir.target_role === 'commercial'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                          : 'bg-purple-500/20 text-purple-300 border border-purple-400/30'
+                      }`}>
+                        Target: {dir.target_title}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        dir.priority === 'critical'
+                          ? 'bg-red-500/20 text-red-300 border border-red-400/30'
+                          : dir.priority === 'high'
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-400/30'
+                          : 'bg-slate-700 text-slate-300'
+                      }`}>
+                        {dir.priority}
+                      </span>
+                      <span className="text-[10px] text-indigo-300 font-mono">
+                        {dir.directive_type.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {dir.erp_task_id && (
+                        <a
+                          href="https://erp.mcsolutions.stream/app/task"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-mono text-cyan-300 hover:text-cyan-200 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded transition flex items-center gap-1"
+                        >
+                          <span>{dir.erp_task_id}</span>
+                          <span>↗</span>
+                        </a>
+                      )}
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        dir.status === 'completed'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                          : dir.status === 'in_progress'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                          : dir.status === 'acknowledged'
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-400/40'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-400/40'
+                      }`}>
+                        ● {dir.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mt-2.5">{dir.title}</h4>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">{dir.instructions}</p>
+
+                  {dir.deliverables && (
+                    <div className="mt-2 text-[11px] text-indigo-200/90 bg-slate-900/50 p-2 rounded-lg border border-indigo-900/50">
+                      <span className="font-semibold text-indigo-300">Deliverables: </span>
+                      {dir.deliverables}
+                    </div>
+                  )}
+
+                  <div className="mt-3 pt-2 border-t border-slate-700/60 flex flex-wrap justify-between items-center text-[10px] text-slate-400 gap-2">
+                    <div className="flex items-center gap-3">
+                      <span>Issued: {new Date(dir.created_at).toLocaleDateString()} by {dir.issuer_title}</span>
+                      {dir.deadline && <span className="text-amber-300">Deadline: {dir.deadline}</span>}
+                      {dir.acknowledged_by && <span className="text-emerald-300">Ack by {dir.acknowledged_by}</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {dir.status !== 'acknowledged' && dir.status !== 'in_progress' && dir.status !== 'completed' && (
+                        <button
+                          onClick={() => handleUpdateDirectiveStatus(dir.directive_id, 'acknowledged')}
+                          className="px-2 py-0.5 bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-700/50 rounded text-[10px] font-semibold transition"
+                        >
+                          Acknowledge
+                        </button>
+                      )}
+                      {dir.status !== 'completed' && (
+                        <button
+                          onClick={() => handleUpdateDirectiveStatus(dir.directive_id, 'completed')}
+                          className="px-2 py-0.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/50 rounded text-[10px] font-semibold transition"
+                        >
+                          Mark Completed
+                        </button>
+                      )}
+                      {dir.status !== 'revoked' && (
+                        <button
+                          onClick={() => handleUpdateDirectiveStatus(dir.directive_id, 'revoked')}
+                          className="px-2 py-0.5 bg-slate-900 hover:bg-red-950/60 text-slate-400 hover:text-red-300 border border-slate-700 rounded text-[10px] transition"
+                        >
+                          Revoke
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

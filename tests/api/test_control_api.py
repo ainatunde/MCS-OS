@@ -171,3 +171,60 @@ def test_production_auth_and_rbac_enforced(client, monkeypatch):
     )
     assert halt_ok.status_code == 201
     client.delete("/v1/halts/aether-ads", headers=principal_headers)
+
+
+def test_directives_flow(client):
+    # 1. List initial directives
+    list_resp = client.get("/v1/directives")
+    assert list_resp.status_code == 200
+    data = list_resp.json()
+    assert data["count"] >= 2
+    assert any(d["target_role"] == "cto" for d in data["directives"])
+
+    # 2. Issue a new directive
+    new_dir_payload = {
+        "target_role": "cfo",
+        "directive_type": "policy_update",
+        "priority": "critical",
+        "title": "Cloud Infrastructure Spend Audit & Reserve Reallocation",
+        "instructions": "Audit monthly compute bills across Contabo and GCP. Ensure reserves reconcile with ERPNext ledger.",
+        "deliverables": "Audited variance spreadsheet and GL reconciliation journal entry.",
+        "deadline": "2026-10-30",
+        "sync_erp_task": True,
+    }
+    create_resp = client.post(
+        "/v1/directives",
+        json=new_dir_payload,
+        headers={"X-MCS-Actor": "founder_ceo"},
+    )
+    assert create_resp.status_code == 201
+    created_dir = create_resp.json()
+    assert created_dir["target_role"] == "cfo"
+    assert created_dir["status"] == "issued"
+    assert created_dir["erp_task_id"] is not None
+    dir_id = created_dir["directive_id"]
+
+    # 3. Filter by target_role
+    filtered = client.get("/v1/directives?target_role=cfo")
+    assert filtered.status_code == 200
+    assert any(d["directive_id"] == dir_id for d in filtered.json()["directives"])
+
+    # 4. Acknowledge directive
+    ack_resp = client.post(
+        f"/v1/directives/{dir_id}/status",
+        json={"status": "acknowledged", "actor": "cfo@mcsolutions.stream"},
+        headers={"X-MCS-Actor": "cfo"},
+    )
+    assert ack_resp.status_code == 200
+    assert ack_resp.json()["status"] == "acknowledged"
+    assert ack_resp.json()["acknowledged_by"] == "cfo@mcsolutions.stream"
+
+    # 5. Complete directive
+    comp_resp = client.post(
+        f"/v1/directives/{dir_id}/status",
+        json={"status": "completed"},
+        headers={"X-MCS-Actor": "founder_ceo"},
+    )
+    assert comp_resp.status_code == 200
+    assert comp_resp.json()["status"] == "completed"
+

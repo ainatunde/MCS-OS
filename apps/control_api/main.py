@@ -231,6 +231,47 @@ briefings_store: List[Dict[str, Any]] = [
     }
 ]
 
+directives_store: List[Dict[str, Any]] = [
+    {
+        "directive_id": "dir-20261018-001",
+        "target_role": "cto",
+        "target_title": "Chief Technology Officer (CTO)",
+        "directive_type": "strategic_priority",
+        "priority": "critical",
+        "title": "Aether ADX OpenRTB 3.0 SSP Latency Target (<5ms p99)",
+        "instructions": "Audit RTB exchange request pipelines across Lagos and Johannesburg POPs. Optimize Valkey floor pricing caches and ensure OpenRTB 3.0 serialized auction responses execute under 5ms at peak evening broadcast load.",
+        "deliverables": "Benchmark latency telemetry report, cache concurrency tuning commits, and 100-event stress test log.",
+        "deadline": "2026-10-25",
+        "sync_erp_task": True,
+        "erp_task_id": "TASK-2026-0042",
+        "issuer": "founder_ceo",
+        "issuer_title": "Founder & CEO",
+        "status": "in_progress",
+        "created_at": "2026-10-18T09:00:00Z",
+        "acknowledged_at": "2026-10-18T09:15:00Z",
+        "acknowledged_by": "cto@mcsolutions.stream",
+    },
+    {
+        "directive_id": "dir-20261018-002",
+        "target_role": "commercial",
+        "target_title": "Chief Commercial Officer (CCO)",
+        "directive_type": "policy_update",
+        "priority": "high",
+        "title": "Broadcaster Onboarding Rev-Share Terms Approval Thresholds",
+        "instructions": "Maintain standard 40/15/45 rev-share split for linear tier-2 broadcasters. Any custom concession exceeding 5% margin for tier-1 national networks requires explicit A3 CEO approval in Decision Inbox before issuing formal quotation.",
+        "deliverables": "Updated ERPNext quotation templates and sales enablement guide for Q4 pipeline.",
+        "deadline": "2026-10-22",
+        "sync_erp_task": True,
+        "erp_task_id": "TASK-2026-0043",
+        "issuer": "founder_ceo",
+        "issuer_title": "Founder & CEO",
+        "status": "acknowledged",
+        "created_at": "2026-10-18T10:30:00Z",
+        "acknowledged_at": "2026-10-18T11:00:00Z",
+        "acknowledged_by": "commercial@mcsolutions.stream",
+    },
+]
+
 
 def _is_auth_enforced() -> bool:
     return (
@@ -297,6 +338,24 @@ class IncidentCreateRequest(BaseModel):
     product_slug: str = Field(..., min_length=2, max_length=64)
     severity: str = Field(default="high", max_length=32)
     summary: str = Field(..., min_length=3, max_length=512)
+
+
+class DirectiveCreateRequest(BaseModel):
+    target_role: str = Field(..., min_length=2, max_length=64)
+    directive_type: str = Field(default="strategic_priority", max_length=64)
+    priority: str = Field(default="high", max_length=32)
+    title: str = Field(..., min_length=3, max_length=256)
+    instructions: str = Field(..., min_length=5, max_length=4096)
+    deliverables: Optional[str] = None
+    deadline: Optional[str] = None
+    standing_authority_impact: Optional[str] = None
+    sync_erp_task: bool = True
+
+
+class DirectiveStatusUpdateRequest(BaseModel):
+    status: str = Field(..., description="'acknowledged' | 'in_progress' | 'completed' | 'revoked'")
+    actor: Optional[str] = None
+    notes: Optional[str] = None
 
 
 @app.get("/healthz")
@@ -637,3 +696,75 @@ async def get_team_directory(_auth: str = Depends(verify_control_auth)):
             },
         ],
     }
+
+
+@app.get("/v1/directives")
+async def list_directives(
+    target_role: Optional[str] = None,
+    _auth: str = Depends(verify_control_auth),
+):
+    results = directives_store
+    if target_role and target_role != "all":
+        results = [d for d in results if d.get("target_role") in (target_role, "all")]
+    return {"count": len(results), "directives": results}
+
+
+@app.post("/v1/directives", status_code=status.HTTP_201_CREATED)
+async def issue_directive(
+    req: DirectiveCreateRequest,
+    principal_actor: str = Depends(verify_principal_auth),
+):
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    directive_id = f"dir-{timestamp_str}"
+
+    role_titles = {
+        "all": "Company-Wide (All Charters D01–D11)",
+        "cto": "Chief Technology Officer (CTO)",
+        "cfo": "Chief Financial Officer (CFO)",
+        "coo": "Chief Operating Officer (COO)",
+        "commercial": "Chief Commercial Officer (CCO)",
+        "support": "Customer Success Lead",
+    }
+
+    record = {
+        "directive_id": directive_id,
+        "target_role": req.target_role,
+        "target_title": role_titles.get(req.target_role, f"Department {req.target_role}"),
+        "directive_type": req.directive_type,
+        "priority": req.priority,
+        "title": req.title,
+        "instructions": req.instructions,
+        "deliverables": req.deliverables,
+        "deadline": req.deadline,
+        "standing_authority_impact": req.standing_authority_impact,
+        "sync_erp_task": req.sync_erp_task,
+        "erp_task_id": f"TASK-2026-{datetime.now(timezone.utc).strftime('%m%d%H')}" if req.sync_erp_task else None,
+        "issuer": principal_actor,
+        "issuer_title": ROLE_AUTHORITY_SCOPES.get(principal_actor, {}).get("title", "Founder & CEO"),
+        "status": "issued",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "acknowledged_at": None,
+        "acknowledged_by": None,
+    }
+    directives_store.insert(0, record)
+    return record
+
+
+@app.post("/v1/directives/{directive_id}/status")
+async def update_directive_status(
+    directive_id: str,
+    req: DirectiveStatusUpdateRequest,
+    _principal: str = Depends(verify_principal_auth),
+):
+    directive = next((d for d in directives_store if d["directive_id"] == directive_id), None)
+    if not directive:
+        raise HTTPException(status_code=404, detail="Directive not found")
+
+    directive["status"] = req.status
+    if req.status == "acknowledged" and not directive.get("acknowledged_at"):
+        directive["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
+        directive["acknowledged_by"] = req.actor or "assigned_lead"
+    if req.status == "completed":
+        directive["completed_at"] = datetime.now(timezone.utc).isoformat()
+    return directive
+
