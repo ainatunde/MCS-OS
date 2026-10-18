@@ -1,0 +1,28 @@
+{
+  "name": "pulzz-sdk",
+  "version": "0.1.0",
+  "description": "Official JavaScript/TypeScript SDK for Pulzz — African Broadcast Intelligence & Ratings (pulzz.stream)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "keywords": [
+    "pulzz",
+    "broadcast",
+    "ratings",
+    "telemetry",
+    "scte35",
+    "africa",
+    "media"
+  ],
+  "author": "Multimedia Cloud Solutions <pulzz@mcsolutions.ng>",
+  "contributors": [
+    "MCS Identities <identities@mcsolutions.ng>"
+  ],
+  "license": "UNLICENSED",
+  "homepage": "https://pulzz.stream",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pulzztv/pulzz-sdk.git"
+  }
+}
