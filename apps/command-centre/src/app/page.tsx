@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 type Persona = 'founder_ceo' | 'cfo' | 'cto' | 'coo' | 'commercial';
 
@@ -313,6 +314,15 @@ export default function CommandCentre() {
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             Team Logins
           </button>
+
+          {/* Products & Solutions Showcase */}
+          <Link
+            href="/products"
+            className="px-3 py-1.5 bg-cyan-50 border border-cyan-300 hover:bg-cyan-100 text-cyan-900 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
+          >
+            <span>Products & Solutions</span>
+            <span>→</span>
+          </Link>
 
           {/* Direct Link to ERPNext */}
           <a
