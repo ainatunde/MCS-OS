@@ -420,7 +420,61 @@ export default function CommandCentre() {
     }
   };
 
+  const setRelativeDeadline = (daysOrType: number | 'today' | 'tomorrow' | 'end_of_week' | 'end_of_month') => {
+    const now = new Date();
+    let target = new Date();
+
+    if (daysOrType === 'today') {
+      target = now;
+    } else if (daysOrType === 'tomorrow') {
+      target.setDate(now.getDate() + 1);
+    } else if (daysOrType === 'end_of_week') {
+      const day = now.getDay();
+      const daysUntilFriday = (5 - day + 7) % 7 || 7;
+      target.setDate(now.getDate() + daysUntilFriday);
+    } else if (daysOrType === 'end_of_month') {
+      target = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (typeof daysOrType === 'number') {
+      target.setDate(now.getDate() + daysOrType);
+    }
+
+    const yyyy = target.getFullYear();
+    const mm = String(target.getMonth() + 1).padStart(2, '0');
+    const dd = String(target.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    setDirectiveForm(prev => ({ ...prev, deadline: dateStr }));
+  };
+
+  const formatDeadlinePreview = (dateStr: string) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return null;
+    const target = new Date(parts[0], parts[1] - 1, parts[2]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    const formattedDate = target.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+
+    if (diffDays === 0) return `Today (${formattedDate})`;
+    if (diffDays === 1) return `Tomorrow (${formattedDate})`;
+    if (diffDays < 0) return `${Math.abs(diffDays)}d ago (${formattedDate})`;
+    return `In ${diffDays}d (${formattedDate})`;
+  };
+
   const loadPreset = (preset: { target_role: string; type: any; priority: any; title: string; instructions: string; deliverables: string }) => {
+    const in7Days = new Date();
+    in7Days.setDate(in7Days.getDate() + 7);
+    const yyyy = in7Days.getFullYear();
+    const mm = String(in7Days.getMonth() + 1).padStart(2, '0');
+    const dd = String(in7Days.getDate()).padStart(2, '0');
+    const defaultDeadline = `${yyyy}-${mm}-${dd}`;
+
     setDirectiveForm({
       target_role: preset.target_role,
       directive_type: preset.type,
@@ -428,7 +482,7 @@ export default function CommandCentre() {
       title: preset.title,
       instructions: preset.instructions,
       deliverables: preset.deliverables,
-      deadline: '2026-10-31',
+      deadline: defaultDeadline,
       sync_erp_task: true,
     });
     setShowDirectiveForm(true);
@@ -795,13 +849,96 @@ export default function CommandCentre() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-indigo-300 uppercase mb-1">Target Horizon / Deadline</label>
-                  <input
-                    type="date"
-                    value={directiveForm.deadline}
-                    onChange={e => setDirectiveForm({ ...directiveForm, deadline: e.target.value })}
-                    className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-3 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[11px] font-semibold text-indigo-300 uppercase">
+                      Target Horizon / Deadline
+                    </label>
+                    {directiveForm.deadline && (
+                      <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800 font-bold">
+                        {formatDeadlinePreview(directiveForm.deadline)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={directiveForm.deadline}
+                      onChange={e => setDirectiveForm({ ...directiveForm, deadline: e.target.value })}
+                      className="w-full bg-slate-900 border border-indigo-700/60 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-cyan-400"
+                    />
+                    {directiveForm.deadline && (
+                      <button
+                        type="button"
+                        onClick={() => setDirectiveForm({ ...directiveForm, deadline: '' })}
+                        className="px-2.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg border border-slate-700 transition"
+                        title="Clear deadline"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 1-Click Quick Horizon Pills */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline('today')}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                        formatDeadlinePreview(directiveForm.deadline)?.startsWith('Today')
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60'
+                      }`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline('tomorrow')}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                        formatDeadlinePreview(directiveForm.deadline)?.startsWith('Tomorrow')
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60'
+                      }`}
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline('end_of_week')}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60 transition"
+                    >
+                      This Fri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline(3)}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60 transition"
+                    >
+                      +3d
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline(7)}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60 transition"
+                    >
+                      +7d
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline(14)}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60 transition"
+                    >
+                      +14d
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRelativeDeadline('end_of_month')}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-200 border border-indigo-800/60 transition"
+                    >
+                      End of Mo
+                    </button>
+                  </div>
                 </div>
               </div>
 
