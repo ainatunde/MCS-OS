@@ -10,6 +10,7 @@ import logging
 import os
 import sqlite3
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -172,6 +173,7 @@ class YouTubePollerService:
                 except Exception as exc:
                     stats.errors += 1
                     print(f"    [ERR] [{slug}] Error polling feed: {exc}")
+                time.sleep(0.5)
 
             # 3. Ingest stars
             stars = self.get_active_stars(conn)
@@ -194,6 +196,7 @@ class YouTubePollerService:
                 except Exception as exc:
                     stats.errors += 1
                     print(f"    [ERR] [Star: {slug}] Error polling feed: {exc}")
+                time.sleep(0.5)
 
             conn.commit()
         finally:
