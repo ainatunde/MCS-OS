@@ -45,7 +45,7 @@ def get_db_url():
     url = os.environ.get("DATABASE_URL")
     if url:
         return url.replace("postgresql+psycopg://", "postgresql://")
-    return "postgresql://mcs_policy_role:79f678bf952c7f4ff8eac0f72b13e00c4459b872@127.0.0.1:5432/mcs_os"
+    raise RuntimeError("DATABASE_URL is required")
 
 
 def seed(conn):

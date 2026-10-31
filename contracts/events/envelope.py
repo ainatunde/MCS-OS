@@ -11,12 +11,13 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class EventEnvelope(BaseModel):
     event_id: str
     producer: str
+    event_type: str = "unspecified.v1"
     schema_version: str = "v1"
     product_slug: str
     occurred_at: datetime
@@ -27,13 +28,10 @@ class EventEnvelope(BaseModel):
     signature: Optional[str] = None
     payload: Dict[str, Any]
 
-    @field_validator("payload_hash")
-    @classmethod
-    def verify_event_hash(cls, v: str, info) -> str:
-        payload = info.data.get("payload")
-        if payload is not None:
-            canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-            expected = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
-            if v != expected:
-                raise ValueError(f"Event payload_hash mismatch: given {v}, calculated {expected}")
-        return v
+    @model_validator(mode="after")
+    def verify_event_hash(self):
+        canonical_json = json.dumps(self.payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        expected = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+        if self.payload_hash != expected:
+            raise ValueError("Event payload_hash mismatch")
+        return self

@@ -25,7 +25,7 @@ class IngressResult:
 
 class IngressService:
     def __init__(self):
-        # In-memory deduplication set for unit tests; backed by PostgreSQL in production
+        # Isolated legacy test utility. Production uses services.control.store.Event.
         self.seen_events: Set[str] = set()
         self.recorded_events: Dict[str, EventEnvelope] = {}
 
@@ -34,6 +34,9 @@ class IngressService:
 
         # 1. Uniqueness check
         if dedupe_key in self.seen_events:
+            prior = self.recorded_events[dedupe_key]
+            if prior.payload_hash != event.payload_hash or prior.product_slug != event.product_slug or prior.event_type != event.event_type:
+                return IngressResult(accepted=False, is_duplicate=False, event_id=event.event_id, error="Event key content conflict")
             return IngressResult(accepted=True, is_duplicate=True, event_id=event.event_id)
 
         # 2. Verify payload hash (already enforced by Pydantic, but rechecked for defense in depth)

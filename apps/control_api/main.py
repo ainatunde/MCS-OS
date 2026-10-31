@@ -1,770 +1,398 @@
-"""MCS-OS Central Control API Gateway (FastAPI) (MCS-OS v2.2 §4.1 & §7).
-
-Provides the authenticated corporate control plane for:
-  - Product Registry & Capabilities (/v1/products)
-  - Event Ingress & Deduplication (/v1/events)
-  - Task Orchestration (/v1/tasks)
-  - Action Proposals & Policy Evaluation (/v1/action-intents)
-  - Decision Inbox & Approvals (/v1/approvals)
-  - Execution Status & Reconciliation (/v1/actions/{id})
-  - Incidents Registry (/v1/incidents)
-  - Emergency Halts & Containment (/v1/halts)
-  - Executive 07:30 WAT Briefings (/v1/briefings)
-"""
-
+"""Authenticated, durable corporate control API. No demonstration state in production."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-import hashlib
-import hmac
-import json
 import os
-from typing import Any, Dict, List, Optional
+import secrets
+import time
+import uuid
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+import httpx
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 
-from contracts.actions.envelope import ActionEnvelope, AuthorityClass, OutcomeState, canonical_payload_hash
-from contracts.events.envelope import EventEnvelope
-from services.policy.engine import PolicyEngine, PolicyDecision
-from services.ingress.service import IngressService, IngressResult
-from adapters.products.cloudstream_vcp import CloudStreamVCPAdapter
-from adapters.products.cloudstream_forge import CloudStreamForgeAdapter
-from adapters.products.aether_ads import AetherADSAdapter
-from adapters.products.aether_adx import AetherADXAdapter
-from adapters.products.tv_insights import TVInsightsAdapter
-from adapters.products.africasignal import AfricaSignalAdapter
-from adapters.products.mcs_app_factory import MCSAppFactoryAdapter
-from adapters.providers.erpnext_adapter import ERPNextAdapter
-
-app = FastAPI(
-    title="MCS-OS Corporate Control API",
-    version="2.2.0",
-    description="Multimedia Cloud Solutions Autonomous Operating System API",
-)
-
-default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://command.mcsolutions.stream",
-    "https://os.mcsolutions.stream",
-    "https://erp.mcsolutions.stream",
-]
-env_origins = [
-    origin.strip()
-    for origin in os.environ.get("MCS_CORS_ORIGINS", "").split(",")
-    if origin.strip()
-]
-allowed_origins = list(dict.fromkeys(default_origins + env_origins))
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "X-MCS-API-Key", "X-MCS-Actor", "X-MCS-Signature"],
-)
-
-# Global services & state
-policy_engine = PolicyEngine()
-ingress_service = IngressService()
-
-adapters = {
-    "cloudstream-vcp": CloudStreamVCPAdapter(),
-    "cloudstream-forge": CloudStreamForgeAdapter(),
-    "aether-ads": AetherADSAdapter(),
-    "aether-adx": AetherADXAdapter(),
-    "tv-insights": TVInsightsAdapter(),
-    "africasignal": AfricaSignalAdapter(),
-    "mcs-app-factory": MCSAppFactoryAdapter(),
-    "mcs-erp": ERPNextAdapter(),
-}
-
-# Executive Persona Governance & Department Mandates (MCS-OS v2.2 §4.1)
-PRINCIPAL_ACTORS = {
-    "founder_ceo", "ceo", "principal", "board_chair",
-    "cfo", "cto", "coo", "commercial_lead", "commercial",
-}
-
-ROLE_AUTHORITY_SCOPES: Dict[str, Dict[str, Any]] = {
-    "founder_ceo": {
-        "title": "Chief Executive Officer (CEO)",
-        "departments": ["*"],
-        "can_halt_company": True,
-        "email": "aina_tunde@hotmail.com",
-    },
-    "ceo": {
-        "title": "Chief Executive Officer (CEO)",
-        "departments": ["*"],
-        "can_halt_company": True,
-        "email": "aina_tunde@hotmail.com",
-    },
-    "principal": {
-        "title": "Corporate Principal",
-        "departments": ["*"],
-        "can_halt_company": True,
-        "email": "aina_tunde@hotmail.com",
-    },
-    "board_chair": {
-        "title": "Board Chair",
-        "departments": ["*"],
-        "can_halt_company": True,
-        "email": "aina_tunde@hotmail.com",
-    },
-    "cfo": {
-        "title": "Chief Financial Officer (CFO)",
-        "departments": ["D06", "D10", "D02"],
-        "can_halt_company": False,
-        "email": "cfo@mcsolutions.stream",
-    },
-    "cto": {
-        "title": "Chief Technology Officer (CTO)",
-        "departments": ["D05", "D04", "D08"],
-        "can_halt_company": True,
-        "email": "cto@mcsolutions.stream",
-    },
-    "coo": {
-        "title": "Chief Operating Officer (COO)",
-        "departments": ["D01", "D07", "D10"],
-        "can_halt_company": True,
-        "email": "coo@mcsolutions.stream",
-    },
-    "commercial": {
-        "title": "Chief Commercial Officer (CCO)",
-        "departments": ["D02", "D03"],
-        "can_halt_company": False,
-        "email": "commercial@mcsolutions.stream",
-    },
-    "commercial_lead": {
-        "title": "Chief Commercial Officer (CCO)",
-        "departments": ["D02", "D03"],
-        "can_halt_company": False,
-        "email": "commercial@mcsolutions.stream",
-    },
-}
-
-# Runtime stores with pre-seeded executive proposals
-tasks_store: Dict[str, Dict[str, Any]] = {}
-actions_store: Dict[str, Dict[str, Any]] = {
-    "act-d02-001": {
-        "action_id": "act-d02-001",
-        "envelope": {"product_slug": "aether-ads", "department_id": "D02"},
-        "status": "awaiting_approval",
-    },
-    "act-d06-001": {
-        "action_id": "act-d06-001",
-        "envelope": {"product_slug": "corporate", "department_id": "D06"},
-        "status": "awaiting_approval",
-    },
-    "act-d05-001": {
-        "action_id": "act-d05-001",
-        "envelope": {"product_slug": "cloudstream-vcp", "department_id": "D05"},
-        "status": "awaiting_approval",
-    },
-    "act-d01-001": {
-        "action_id": "act-d01-001",
-        "envelope": {"product_slug": "tv-insights", "department_id": "D01"},
-        "status": "awaiting_approval",
-    },
-}
-
-approvals_store: Dict[str, Dict[str, Any]] = {
-    "act-d02-001": {
-        "approval_id": "appr-d02-001",
-        "action_id": "act-d02-001",
-        "department_id": "D02",
-        "action_type": "commercial.nonstandard_offer.v1",
-        "payload_hash": "sha256:4a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
-        "title": "Metro Broadcast SSAI Agreement (35% rev-share)",
-        "proposed_effect": "Special multi-channel SSAI agreement for Metro Broadcast (35% rev-share)",
-        "amount_usd": 12000.0,
-        "status": "pending",
-        "created_at": "2026-10-17T12:00:00Z",
-    },
-    "act-d06-001": {
-        "approval_id": "appr-d06-001",
-        "action_id": "act-d06-001",
-        "department_id": "D06",
-        "action_type": "finance.treasury_allocation.v1",
-        "payload_hash": "sha256:6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d",
-        "title": "Quarterly Reserved GPU Compute Cluster Commitment",
-        "proposed_effect": "Quarterly cloud reservation for edge neural transcoders ($24,500 commitment)",
-        "amount_usd": 24500.0,
-        "status": "pending",
-        "created_at": "2026-10-17T14:30:00Z",
-    },
-    "act-d05-001": {
-        "approval_id": "appr-d05-001",
-        "action_id": "act-d05-001",
-        "department_id": "D05",
-        "action_type": "engineering.infrastructure_autoscale.v1",
-        "payload_hash": "sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
-        "title": "Transcoding Cluster Dynamic Scale Ceiling Increase (24 to 48 nodes)",
-        "proposed_effect": "Dynamic scaling threshold expansion for Lagos & Johannesburg edge POPs",
-        "status": "pending",
-        "created_at": "2026-10-17T16:00:00Z",
-    },
-    "act-d01-001": {
-        "approval_id": "appr-d01-001",
-        "action_id": "act-d01-001",
-        "department_id": "D01",
-        "action_type": "operations.vendor_sla_waiver.v1",
-        "payload_hash": "sha256:2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
-        "title": "TV-Insights Regional Feed Ingest Temporary Concurrency Expansion",
-        "proposed_effect": "Temporary crawler concurrency multiplier during prime-time broadcasting",
-        "status": "pending",
-        "created_at": "2026-10-17T18:15:00Z",
-    },
-}
-
-incidents_store: Dict[str, Dict[str, Any]] = {}
-briefings_store: List[Dict[str, Any]] = [
-    {
-        "briefing_id": "brf-20261016-0730",
-        "date": "2026-10-16",
-        "scheduled_time": "07:30 WAT",
-        "headline": "Portfolio Launch Baseline: 8 of 8 Systems Healthy",
-        "departments_ready": 11,
-        "active_halts": 0,
-        "standing_authority_execution": "100%",
-    }
-]
-
-directives_store: List[Dict[str, Any]] = [
-    {
-        "directive_id": "dir-20261018-001",
-        "target_role": "cto",
-        "target_title": "Chief Technology Officer (CTO)",
-        "directive_type": "strategic_priority",
-        "priority": "critical",
-        "title": "Aether ADX OpenRTB 3.0 SSP Latency Target (<5ms p99)",
-        "instructions": "Audit RTB exchange request pipelines across Lagos and Johannesburg POPs. Optimize Valkey floor pricing caches and ensure OpenRTB 3.0 serialized auction responses execute under 5ms at peak evening broadcast load.",
-        "deliverables": "Benchmark latency telemetry report, cache concurrency tuning commits, and 100-event stress test log.",
-        "deadline": "2026-10-25",
-        "sync_erp_task": True,
-        "erp_task_id": "TASK-2026-0042",
-        "issuer": "founder_ceo",
-        "issuer_title": "Founder & CEO",
-        "status": "in_progress",
-        "created_at": "2026-10-18T09:00:00Z",
-        "acknowledged_at": "2026-10-18T09:15:00Z",
-        "acknowledged_by": "cto@mcsolutions.stream",
-    },
-    {
-        "directive_id": "dir-20261018-002",
-        "target_role": "commercial",
-        "target_title": "Chief Commercial Officer (CCO)",
-        "directive_type": "policy_update",
-        "priority": "high",
-        "title": "Broadcaster Onboarding Rev-Share Terms Approval Thresholds",
-        "instructions": "Maintain standard 40/15/45 rev-share split for linear tier-2 broadcasters. Any custom concession exceeding 5% margin for tier-1 national networks requires explicit A3 CEO approval in Decision Inbox before issuing formal quotation.",
-        "deliverables": "Updated ERPNext quotation templates and sales enablement guide for Q4 pipeline.",
-        "deadline": "2026-10-22",
-        "sync_erp_task": True,
-        "erp_task_id": "TASK-2026-0043",
-        "issuer": "founder_ceo",
-        "issuer_title": "Founder & CEO",
-        "status": "acknowledged",
-        "created_at": "2026-10-18T10:30:00Z",
-        "acknowledged_at": "2026-10-18T11:00:00Z",
-        "acknowledged_by": "commercial@mcsolutions.stream",
-    },
-]
+from contracts.actions.envelope import ActionEnvelope
+from services.control.security import DEPARTMENTS, Principal, authenticate, operator, service_event
+from services.control.store import Action, Event, Identity, Record, Store, canonical, configured_store, digest, token_hash
+from services.policy.engine import PolicyEngine
 
 
-def _is_auth_enforced() -> bool:
-    return (
-        os.environ.get("MCS_OS_AUTH_REQUIRED", "0") == "1"
-        or os.environ.get("MCS_OS_ENV", "development").lower() == "production"
-    )
+class Login(BaseModel):
+    username: str = Field(min_length=1, max_length=254)
+    password: str = Field(min_length=1, max_length=256)
 
 
-async def verify_control_auth(
-    authorization: Optional[str] = Header(default=None),
-    x_mcs_api_key: Optional[str] = Header(default=None),
-) -> str:
-    expected_token = os.environ.get("MCS_CONTROL_API_TOKEN", "")
-    provided = x_mcs_api_key or ""
-    if authorization and authorization.lower().startswith("bearer "):
-        provided = authorization[7:].strip()
-
-    if _is_auth_enforced():
-        if not expected_token or not provided or not hmac.compare_digest(provided, expected_token):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Valid Bearer token or X-MCS-API-Key required",
-            )
-    return provided or "dev-session"
-
-
-async def verify_principal_auth(
-    _token: str = Depends(verify_control_auth),
-    x_mcs_actor: Optional[str] = Header(default=None),
-) -> str:
-    actor = x_mcs_actor or "founder_ceo"
-    if _is_auth_enforced() and (not x_mcs_actor or x_mcs_actor not in PRINCIPAL_ACTORS):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Principal role (X-MCS-Actor) required for A3 approvals and emergency halts",
-        )
-    return actor
-
-
-# Pydantic Request Models
-class EventSubmissionRequest(BaseModel):
-    event_id: str = Field(..., min_length=3, max_length=128)
-    producer: str = Field(..., min_length=2, max_length=64)
-    event_type: str = Field(..., min_length=3, max_length=128)
-    payload: Dict[str, Any]
-    product_slug: Optional[str] = "corporate"
+class EventSubmission(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_id: str = Field(min_length=3, max_length=128)
+    producer: str = Field(min_length=2, max_length=64)
+    event_type: str = Field(min_length=3, max_length=128)
+    product_slug: str
     schema_version: str = "v1"
-    signature: Optional[str] = None
+    occurred_at: str
+    payload: dict
 
 
-class ApprovalDecisionRequest(BaseModel):
-    decision: str  # "approve_content" | "approve_and_send" | "deny" | "revoke" | "request_revision"
-    actor: str = "founder_ceo"
-    rationale: Optional[str] = None
+class ApprovalDecision(BaseModel):
+    decision: str
+    actor: str | None = None  # compatibility only; never an authorization source
+    rationale: str = Field(default="", max_length=2048)
 
 
 class HaltRequest(BaseModel):
-    scope: str = Field(..., min_length=2, max_length=64)
-    reason: str = Field(..., min_length=3, max_length=512)
+    scope: str = Field(min_length=2, max_length=64)
+    reason: str = Field(min_length=3, max_length=512)
 
 
-class IncidentCreateRequest(BaseModel):
-    incident_id: str = Field(..., min_length=3, max_length=64)
-    product_slug: str = Field(..., min_length=2, max_length=64)
-    severity: str = Field(default="high", max_length=32)
-    summary: str = Field(..., min_length=3, max_length=512)
+class DirectiveRequest(BaseModel):
+    target_role: str
+    directive_type: str = "immediate_action"
+    priority: str = "routine"
+    title: str = Field(min_length=3, max_length=256)
+    instructions: str = Field(min_length=5, max_length=4096)
+    deliverables: str | None = None
+    deadline: str | None = None
+    sync_erp_task: bool = False
 
 
-class DirectiveCreateRequest(BaseModel):
-    target_role: str = Field(..., min_length=2, max_length=64)
-    directive_type: str = Field(default="strategic_priority", max_length=64)
-    priority: str = Field(default="high", max_length=32)
-    title: str = Field(..., min_length=3, max_length=256)
-    instructions: str = Field(..., min_length=5, max_length=4096)
-    deliverables: Optional[str] = None
-    deadline: Optional[str] = None
-    standing_authority_impact: Optional[str] = None
-    sync_erp_task: bool = True
+def create_app(store: Store | None = None):
+    @asynccontextmanager
+    async def lifespan(app):
+        if not hasattr(app.state, "store"):
+            app.state.store = configured_store()
+        yield
+
+    app = FastAPI(title="MCS-OS Corporate Control API", version="2.3.0", lifespan=lifespan)
+    if store is not None:
+        app.state.store = store
+    origins = [o.strip() for o in os.getenv("MCS_CORS_ORIGINS", "https://command.mcsolutions.stream,https://os.mcsolutions.stream").split(",") if o.strip()]
+    app.state.origins = origins
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "DELETE"], allow_headers=["Authorization", "Content-Type", "X-MCS-Timestamp", "X-MCS-Signature"])
+
+    @app.get("/healthz")
+    def health(request: Request):
+        try:
+            with request.app.state.store.transaction() as s:
+                s.execute(text("SELECT 1"))
+            return {"status": "healthy", "service": "mcs-control-api", "version": "2.3.0", "commit": os.getenv("BUILD_SHA", "unknown")}
+        except Exception:
+            return JSONResponse({"status": "unhealthy", "service": "mcs-control-api"}, status_code=503)
+
+    @app.post("/v1/session")
+    async def login(req: Login, request: Request, response: Response):
+        username = req.username.strip().lower()
+        if username == "administrator":
+            username = "Administrator"
+        st = request.app.state.store
+        key = digest({"username": username, "peer": request.client.host if request.client else "unknown"})
+        with st.transaction() as s:
+            account = s.get(Identity, "operator:" + username)
+            if not account or not account.enabled or account.role not in DEPARTMENTS:
+                raise HTTPException(401, "Account not enabled for command centre")
+            attempt = s.get(Record, ("login", key), with_for_update=True)
+            if attempt and attempt.body.get("count", 0) >= 8 and time.time() - attempt.updated_at < 900:
+                raise HTTPException(429, "Too many attempts; retry in 15 minutes")
+            count = attempt.body.get("count", 0) if attempt and time.time() - attempt.updated_at < 900 else 0
+            st.put(s, "login", key, {"count": count + 1})
+        erp = os.getenv("ERPNEXT_URL", "").rstrip("/")
+        if not erp:
+            raise HTTPException(503, "ERP identity provider unconfigured")
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                auth = await client.post(erp + "/api/method/login", data={"usr": req.username, "pwd": req.password})
+                if auth.status_code != 200:
+                    raise HTTPException(401, "ERP sign-in failed")
+                who = await client.get(erp + "/api/method/frappe.auth.get_logged_user")
+                actual = who.json().get("message") if who.status_code == 200 else None
+                if not isinstance(actual, str) or actual.lower() != username.lower():
+                    raise HTTPException(401, "ERP identity could not be verified")
+                # OS issues a short-lived session; do not leave a second ERP session behind.
+                await client.get(erp + "/api/method/logout")
+        except httpx.HTTPError:
+            raise HTTPException(503, "ERP identity provider unavailable") from None
+        session_token = secrets.token_urlsafe(48)
+        with st.transaction() as s:
+            account = s.get(Identity, "operator:" + username)
+            if not account or not account.enabled:
+                raise HTTPException(401, "Account disabled")
+            s.add(Identity(identity_id="session:" + str(uuid.uuid4()), role=account.role, kind="session", parent_id=account.identity_id, token_hash=token_hash(session_token), expires_at=time.time() + 1800, scopes={}))
+            attempt = s.get(Record, ("login", key))
+            if attempt:
+                s.delete(attempt)
+            st.audit(s, account.identity_id, "session.created", username)
+            role = account.role
+        response.set_cookie("mcs_session", session_token, max_age=1800, httponly=True, secure=os.getenv("MCS_OS_ENV", "development") != "development", samesite="lax", path="/")
+        return {"role": role, "expires_in": 1800, "username": username}
+
+    @app.get("/v1/session")
+    def session(principal: Principal = Depends(authenticate)):
+        operator(principal)
+        return {"role": principal.role, "identity_id": principal.identity_id, "departments": DEPARTMENTS[principal.role]}
+
+    @app.delete("/v1/session")
+    def logout(request: Request, response: Response, principal: Principal = Depends(authenticate)):
+        with request.app.state.store.transaction() as s:
+            identity = s.get(Identity, principal.identity_id)
+            if identity and identity.kind == "session":
+                identity.enabled = False
+        response.delete_cookie("mcs_session", path="/")
+        return {"status": "signed_out"}
+
+    @app.get("/v1/products")
+    async def products(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        targets = [("tv-insights", os.getenv("PULZZ_URL", "").rstrip("/") + "/ready"), ("mcs-erp", os.getenv("MCS_ERP_GATEWAY_URL", "").rstrip("/") + "/healthz")]
+        results = []
+        async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
+            for slug, url in targets:
+                status, detail = "unconfigured", "Endpoint not configured"
+                if url.startswith(("https://", "http://")):
+                    try:
+                        headers = {"Authorization": "Bearer " + os.getenv("MCS_ERP_GATEWAY_TOKEN", "")} if slug == "mcs-erp" else {}
+                        r = await client.get(url, headers=headers)
+                        status = "healthy" if r.status_code == 200 else "degraded"
+                        detail = "HTTP " + str(r.status_code)
+                    except httpx.HTTPError:
+                        status, detail = "down", "Connection unavailable"
+                results.append({"product_slug": slug, "health": {"status": status, "details": {"observation": detail}, "observed_at": time.time()}})
+        return {"count": len(results), "products": results}
+
+    @app.post("/v1/events", status_code=201)
+    def events(req: EventSubmission, request: Request, principal: Principal = Depends(authenticate)):
+        body = req.model_dump()
+        service_event(request, principal, body)
+        if req.schema_version != "v1":
+            raise HTTPException(422, "Unsupported event schema")
+        try:
+            when = datetime.fromisoformat(req.occurred_at.replace("Z", "+00:00"))
+            if when.tzinfo is None or when.timestamp() > time.time() + 300:
+                raise ValueError()
+        except ValueError:
+            raise HTTPException(422, "Timezone-aware source occurrence time required") from None
+        content_hash = digest(body)
+        st = request.app.state.store
+        try:
+            with st.transaction() as s:
+                existing = s.get(Event, (req.producer, req.event_id))
+                if existing:
+                    if existing.content_hash != content_hash:
+                        raise HTTPException(409, "Event key reused with different content")
+                    return {"status": "accepted", "event_id": req.event_id, "is_duplicate": True}
+                s.add(Event(producer=req.producer, event_id=req.event_id, event_type=req.event_type, product_slug=req.product_slug, content_hash=content_hash, envelope=body))
+                st.audit(s, principal.identity_id, "event.accepted", req.event_id, {"content_hash": content_hash})
+        except IntegrityError:
+            with st.transaction() as s:
+                row = s.get(Event, (req.producer, req.event_id))
+                if not row or row.content_hash != content_hash:
+                    raise HTTPException(409, "Concurrent event content conflict") from None
+            return {"status": "accepted", "event_id": req.event_id, "is_duplicate": True}
+        return {"status": "accepted", "event_id": req.event_id, "is_duplicate": False}
+
+    @app.post("/v1/action-intents", status_code=201)
+    def propose(envelope: ActionEnvelope, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        if not principal.department(envelope.department_id):
+            raise HTTPException(403, "Department outside authenticated mandate")
+        st = request.app.state.store
+        raw = envelope.model_dump(mode="json")
+        # Execution target is independent of the business product attribution.
+        provider = "mcs-erp" if envelope.action_type.startswith(("crm.", "finance.", "support.issue.", "procurement.")) else "tv-insights"
+        with st.transaction() as s:
+            engine = PolicyEngine()
+            for halt in s.scalars(select(Record).where(Record.namespace == "halt")):
+                engine.register_halt(halt.record_id)
+            decision = engine.evaluate(envelope)
+            # This API cannot import caller-supplied authorization references.
+            if decision.requires_approval:
+                state = "awaiting_approval"
+            else:
+                state = decision.promoted_state
+            existing = s.get(Action, envelope.action_id)
+            if existing:
+                if existing.input_hash != digest(raw):
+                    raise HTTPException(409, "Action revision requires a new immutable action ID")
+                return st.public_action(existing)
+            row = Action(action_id=envelope.action_id, idempotency_key=envelope.idempotency_key, product_slug=envelope.product_slug, department_id=envelope.department_id, provider=provider, effective_authority=decision.assigned_authority.value, envelope=raw, input_hash=digest(raw), status=state)
+            s.add(row)
+            s.flush()
+            st.audit(s, principal.identity_id, "action.proposed", row.action_id)
+            return {**st.public_action(row), "policy_decision": {"admitted": decision.admitted, "requires_approval": state == "awaiting_approval", "reasons": decision.reasons}}
+
+    @app.get("/v1/actions")
+    def actions(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            rows = s.scalars(select(Action).order_by(Action.created_at.desc()).limit(200)).all()
+            return {"actions": [Store.public_action(r) for r in rows if principal.department(r.department_id)]}
+
+    @app.get("/v1/actions/{action_id}")
+    def action(action_id: str, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            row = s.get(Action, action_id)
+            if not row or not principal.department(row.department_id):
+                raise HTTPException(404, "Action not found")
+            return Store.public_action(row)
+
+    @app.get("/v1/approvals")
+    def approvals(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            rows = s.scalars(select(Action).where(Action.status.in_(["awaiting_approval", "content_approved"]))).all()
+            return {"approvals": [Store.public_action(r) for r in rows if principal.department(r.department_id)]}
+
+    @app.post("/v1/approvals/{action_id}/decide")
+    def decide(action_id: str, req: ApprovalDecision, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        if req.actor and req.actor != principal.role:
+            raise HTTPException(403, "Request actor cannot replace authenticated identity")
+        st = request.app.state.store
+        with st.transaction() as s:
+            row = s.get(Action, action_id, with_for_update=True)
+            if not row:
+                raise HTTPException(404, "Action not found")
+            if not principal.department(row.department_id):
+                raise HTTPException(403, "Approval outside authenticated mandate")
+            if row.status in {"dispatching", "confirmed", "outcome_unknown"}:
+                raise HTTPException(409, "Dispatched effects require separate reconciliation/compensation")
+            if req.decision.startswith("approve") and row.status not in {"awaiting_approval", "content_approved"}:
+                raise HTTPException(409, "Only a policy-admissible pending approval can be granted")
+            if row.effective_authority == "A4":
+                raise HTTPException(403, "Prohibited actions cannot be approved")
+            if req.decision == "approve_content":
+                row.status = "content_approved"
+            elif req.decision == "approve_and_send":
+                if st.halted(s, row.product_slug):
+                    raise HTTPException(409, "Emergency halt active")
+                row.approval = {"actor_id": principal.identity_id, "role": principal.role, "input_hash": row.input_hash, "expires_at": time.time() + 1800, "revoked": False}
+                row.status = "ready"
+            elif req.decision in {"revoke", "deny"}:
+                row.approval = None
+                row.status = "cancelled" if req.decision == "revoke" else "rejected"
+            elif req.decision == "request_revision":
+                row.status, row.approval = "proposed", None
+            else:
+                raise HTTPException(422, "Unsupported decision")
+            row.updated_at = time.time()
+            st.audit(s, principal.identity_id, "approval." + req.decision, action_id, {"input_hash": row.input_hash, "rationale": req.rationale})
+            return {"status": row.status, "action_status": row.status, "action_id": action_id}
+
+    @app.get("/v1/halts")
+    def halts(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            return {"active_halts": list(s.scalars(select(Record.record_id).where(Record.namespace == "halt")))}
+
+    @app.post("/v1/halts", status_code=201)
+    def halt(req: HaltRequest, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        if principal.role not in {"founder_ceo", "coo", "cto"}:
+            raise HTTPException(403, "Halt authority required")
+        with request.app.state.store.transaction() as s:
+            Store.put(s, "halt", req.scope, {"reason": req.reason, "actor_id": principal.identity_id})
+            Store.audit(s, principal.identity_id, "halt.registered", req.scope)
+        return {"status": "halt_registered", "scope": req.scope}
+
+    @app.delete("/v1/halts/{scope}")
+    def lift(scope: str, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        if principal.role != "founder_ceo":
+            raise HTTPException(403, "Principal required to lift containment")
+        with request.app.state.store.transaction() as s:
+            row = s.get(Record, ("halt", scope))
+            if row:
+                s.delete(row)
+            Store.audit(s, principal.identity_id, "halt.lifted", scope)
+        return {"status": "halt_lifted", "scope": scope}
+
+    def records(request, namespace):
+        with request.app.state.store.transaction() as s:
+            rows = s.scalars(select(Record).where(Record.namespace == namespace).order_by(Record.updated_at.desc()).limit(200))
+            return [dict(r.body, record_id=r.record_id, updated_at=r.updated_at) for r in rows]
+
+    @app.get("/v1/directives")
+    def directives(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        rows = records(request, "directive")
+        return {"directives": [r for r in rows if principal.role == "founder_ceo" or r["target_role"] in {principal.role, "all"}]}
+
+    @app.post("/v1/directives", status_code=201)
+    def directive(req: DirectiveRequest, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        if principal.role != "founder_ceo":
+            raise HTTPException(403, "Principal required to issue directives")
+        if req.target_role not in {*DEPARTMENTS, "all"}:
+            raise HTTPException(422, "Unknown target role")
+        if req.sync_erp_task:
+            raise HTTPException(422, "Corporate tasks are owned by MCS-OS; ERP task mirroring is not qualified")
+        key = "dir-" + str(uuid.uuid4())
+        body = {**req.model_dump(), "directive_id": key, "issuer": principal.identity_id, "status": "issued", "created_at": time.time()}
+        with request.app.state.store.transaction() as s:
+            Store.put(s, "directive", key, body)
+            Store.audit(s, principal.identity_id, "directive.issued", key)
+        return body
+
+    @app.post("/v1/directives/{key}/status")
+    def directive_status(key: str, req: dict, request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            row = s.get(Record, ("directive", key), with_for_update=True)
+            if not row:
+                raise HTTPException(404, "Directive not found")
+            if principal.role not in {"founder_ceo", row.body["target_role"]}:
+                raise HTTPException(403, "Directive outside mandate")
+            state = req.get("status")
+            if state not in {"acknowledged", "in_progress", "completed", "revoked"}:
+                raise HTTPException(422, "Invalid state")
+            if state == "completed" and not req.get("evidence"):
+                raise HTTPException(422, "Completion evidence required")
+            if state == "revoked" and principal.role != "founder_ceo":
+                raise HTTPException(403, "Principal required to revoke")
+            row.body = {**row.body, "status": state, "evidence": req.get("evidence"), "actor_id": principal.identity_id}
+            row.updated_at = time.time()
+            Store.audit(s, principal.identity_id, "directive." + state, key)
+            return row.body
+
+    @app.get("/v1/tasks")
+    def tasks(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        return {"tasks": [r for r in records(request, "task") if principal.department(r.get("department_id", "D01"))]}
+
+    @app.get("/v1/incidents")
+    def incidents(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        return {"incidents": records(request, "incident")}
+
+    @app.get("/v1/briefings")
+    def briefings(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        return {"briefings": records(request, "briefing")}
+
+    @app.get("/v1/integration-status")
+    def integration_status(request: Request, principal: Principal = Depends(authenticate)):
+        operator(principal)
+        with request.app.state.store.transaction() as s:
+            rows = s.scalars(select(Action)).all()
+            counts = {}
+            for r in rows:
+                counts[r.status] = counts.get(r.status, 0) + 1
+            beats = records(request, "heartbeat")
+            return {"action_counts": counts, "heartbeats": beats, "financial_balances": None, "financial_balance_status": "not_qualified", "observed_at": time.time(), "launch_qualified": False}
+
+    @app.get("/v1/integrations/health")
+    def integration_health(request: Request, principal: Principal = Depends(authenticate)):
+        if principal.kind == "service" and not principal.scopes.get("read_health"):
+            raise HTTPException(403, "Health scope required")
+        from services.control.guardian import inspect
+        result = inspect(request.app.state.store)
+        return JSONResponse(result, status_code=200 if result["status"] == "healthy" else 503)
+
+    return app
 
 
-class DirectiveStatusUpdateRequest(BaseModel):
-    status: str = Field(..., description="'acknowledged' | 'in_progress' | 'completed' | 'revoked'")
-    actor: Optional[str] = None
-    notes: Optional[str] = None
-
-
-@app.get("/healthz")
-async def healthz():
-    return {
-        "status": "healthy",
-        "service": "mcs-control-api",
-        "version": "2.2.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "active_halts": list(policy_engine.active_halts),
-    }
-
-
-@app.get("/v1/products")
-async def list_products(_auth: str = Depends(verify_control_auth)):
-    product_list = []
-    for slug, adapter in adapters.items():
-        health = await adapter.read_health()
-        caps = await adapter.describe_capabilities()
-        product_list.append({
-            "product_slug": slug,
-            "adapter_version": getattr(adapter, "adapter_version", "v1"),
-            "health": health.model_dump(),
-            "capabilities_count": len(caps),
-            "capabilities": [c.model_dump() for c in caps],
-        })
-    return {"count": len(product_list), "products": product_list}
-
-
-@app.post("/v1/events", status_code=status.HTTP_201_CREATED)
-async def submit_event(
-    req: EventSubmissionRequest,
-    x_mcs_signature: Optional[str] = Header(default=None),
-    _auth: str = Depends(verify_control_auth),
-):
-    canonical_json = json.dumps(req.payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    payload_hash = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
-
-    webhook_secret = os.environ.get("MCS_WEBHOOK_SECRET", "")
-    provided_sig = x_mcs_signature or req.signature
-    if webhook_secret or _is_auth_enforced():
-        if not webhook_secret or not provided_sig:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing webhook signature (X-MCS-Signature)",
-            )
-        expected_sig = hmac.new(
-            webhook_secret.encode("utf-8"),
-            f"{req.event_id}:{payload_hash}".encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
-        if not hmac.compare_digest(provided_sig, expected_sig):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid webhook signature",
-            )
-
-    envelope = EventEnvelope(
-        event_id=req.event_id,
-        producer=req.producer,
-        product_slug=req.product_slug or "corporate",
-        occurred_at=datetime.now(timezone.utc),
-        correlation_id=f"corr-{req.event_id}",
-        payload=req.payload,
-        payload_hash=payload_hash,
-        schema_version=req.schema_version,
-        signature=provided_sig,
-    )
-    result = ingress_service.ingest(envelope)
-    return {
-        "status": "accepted" if result.accepted else "rejected",
-        "event_id": result.event_id,
-        "is_duplicate": result.is_duplicate,
-    }
-
-
-@app.get("/v1/tasks")
-async def list_tasks(department: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
-    results = list(tasks_store.values())
-    if department:
-        results = [t for t in results if t.get("department_id") == department]
-    return {"count": len(results), "tasks": results}
-
-
-@app.post("/v1/action-intents", status_code=status.HTTP_201_CREATED)
-async def propose_action_intent(envelope: ActionEnvelope, _auth: str = Depends(verify_control_auth)):
-    decision = policy_engine.evaluate(envelope)
-
-    record = {
-        "action_id": envelope.action_id,
-        "envelope": envelope.model_dump(mode="json"),
-        "policy_decision": {
-            "admitted": decision.admitted,
-            "requires_approval": decision.requires_approval,
-            "assigned_authority": decision.assigned_authority.value,
-            "reasons": decision.reasons,
-            "promoted_state": decision.promoted_state,
-        },
-        "status": decision.promoted_state,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    actions_store[envelope.action_id] = record
-
-    if decision.requires_approval:
-        approvals_store[envelope.action_id] = {
-            "approval_id": f"appr-{envelope.action_id}",
-            "action_id": envelope.action_id,
-            "department_id": envelope.department_id,
-            "action_type": envelope.action_type,
-            "payload_hash": envelope.canonical_payload_hash,
-            "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-
-    return record
-
-
-@app.get("/v1/approvals")
-async def list_approvals(status_filter: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
-    results = list(approvals_store.values())
-    if status_filter:
-        results = [a for a in results if a.get("status") == status_filter]
-    return {"count": len(results), "approvals": results}
-
-
-@app.post("/v1/approvals/{action_id}/decide")
-async def decide_approval(
-    action_id: str,
-    req: ApprovalDecisionRequest,
-    principal_actor: str = Depends(verify_principal_auth),
-):
-    approval = approvals_store.get(action_id)
-    if not approval:
-        raise HTTPException(status_code=404, detail="Approval request not found")
-
-    action = actions_store.get(action_id)
-    if not action:
-        raise HTTPException(status_code=404, detail="Action not found")
-
-    actor = req.actor or principal_actor
-    if actor not in PRINCIPAL_ACTORS:
-        raise HTTPException(status_code=403, detail=f"Actor '{actor}' is not an authorized A3 Principal or Executive")
-
-    # Verify department governance scope
-    scope_info = ROLE_AUTHORITY_SCOPES.get(actor, {})
-    allowed_depts = scope_info.get("departments", ["*"])
-    dept = approval.get("department_id")
-    if "*" not in allowed_depts and dept and dept not in allowed_depts:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Actor '{actor}' is not authorized to sign off for department {dept}. Mandate: {allowed_depts}",
-        )
-
-    product_slug = action["envelope"].get("product_slug", "corporate")
-    approval_ref = f"appr-{action_id}"
-
-    if req.decision == "approve_content":
-        # Spec §5.3: 'Approve content' alone never releases the send queue.
-        approval["status"] = "content_approved"
-        approval["decision"] = req.decision
-        approval["actor"] = actor
-        action["status"] = "content_approved"
-    elif req.decision == "approve_and_send":
-        if "company_wide" in policy_engine.active_halts or product_slug in policy_engine.active_halts:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Cannot release action '{action_id}' while emergency halt is active",
-            )
-        approval["status"] = "granted"
-        approval["decision"] = req.decision
-        approval["actor"] = actor
-        action["status"] = "ready"
-        policy_engine.record_approval(approval_ref, approval["payload_hash"])
-    elif req.decision == "deny":
-        approval["status"] = "denied"
-        approval["decision"] = req.decision
-        approval["actor"] = actor
-        action["status"] = "rejected"
-        policy_engine.revoke_approval(approval_ref)
-    elif req.decision == "revoke":
-        approval["status"] = "revoked"
-        approval["decision"] = req.decision
-        approval["actor"] = actor
-        action["status"] = "cancelled"
-        policy_engine.revoke_approval(approval_ref)
-    elif req.decision == "request_revision":
-        approval["status"] = "revision_requested"
-        approval["decision"] = req.decision
-        approval["actor"] = actor
-        action["status"] = "proposed"
-        policy_engine.revoke_approval(approval_ref)
-    else:
-        raise HTTPException(status_code=400, detail=f"Invalid decision: {req.decision}")
-
-    return {"status": approval["status"], "action_id": action_id, "action_status": action["status"]}
-
-
-@app.get("/v1/actions/{action_id}")
-async def get_action(action_id: str, _auth: str = Depends(verify_control_auth)):
-    action = actions_store.get(action_id)
-    if not action:
-        raise HTTPException(status_code=404, detail="Action not found")
-    return action
-
-
-@app.post("/v1/actions/{action_id}/reconcile")
-async def reconcile_action(action_id: str, _auth: str = Depends(verify_control_auth)):
-    action = actions_store.get(action_id)
-    if not action:
-        raise HTTPException(status_code=404, detail="Action not found")
-
-    envelope_data = action["envelope"]
-    product_slug = envelope_data["product_slug"]
-    adapter = adapters.get(product_slug)
-    if not adapter:
-        raise HTTPException(status_code=400, detail=f"No adapter for product: {product_slug}")
-
-    outcome = await adapter.lookup_outcome(action_id, envelope_data["idempotency_key"])
-    action["reconciled_outcome"] = outcome.model_dump(mode="json")
-    return action["reconciled_outcome"]
-
-
-@app.get("/v1/incidents")
-async def list_incidents(product_slug: Optional[str] = None, _auth: str = Depends(verify_control_auth)):
-    results = list(incidents_store.values())
-    if product_slug:
-        results = [i for i in results if i.get("product_slug") == product_slug]
-    return {"count": len(results), "incidents": results}
-
-
-@app.post("/v1/incidents", status_code=status.HTTP_201_CREATED)
-async def create_incident(req: IncidentCreateRequest, _auth: str = Depends(verify_control_auth)):
-    record = {
-        "incident_id": req.incident_id,
-        "product_slug": req.product_slug,
-        "severity": req.severity,
-        "summary": req.summary,
-        "state": "open",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    incidents_store[req.incident_id] = record
-    return record
-
-
-@app.get("/v1/halts")
-async def list_halts(_auth: str = Depends(verify_control_auth)):
-    return {"active_halts": list(policy_engine.active_halts)}
-
-
-@app.post("/v1/halts", status_code=status.HTTP_201_CREATED)
-async def create_halt(req: HaltRequest, principal_actor: str = Depends(verify_principal_auth)):
-    if req.scope == "company_wide":
-        scope_info = ROLE_AUTHORITY_SCOPES.get(principal_actor, {})
-        if not scope_info.get("can_halt_company", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Actor '{principal_actor}' is not authorized to trigger company-wide emergency halts",
-            )
-    policy_engine.register_halt(req.scope)
-    return {"status": "halt_registered", "scope": req.scope, "active_halts": list(policy_engine.active_halts)}
-
-
-@app.delete("/v1/halts/{scope}")
-async def remove_halt(scope: str, _principal: str = Depends(verify_principal_auth)):
-    policy_engine.lift_halt(scope)
-    return {"status": "halt_lifted", "scope": scope, "active_halts": list(policy_engine.active_halts)}
-
-
-@app.get("/v1/briefings")
-async def get_briefings(_auth: str = Depends(verify_control_auth)):
-    return {"count": len(briefings_store), "briefings": briefings_store}
-
-
-@app.get("/v1/team")
-async def get_team_directory(_auth: str = Depends(verify_control_auth)):
-    return {
-        "count": 6,
-        "team": [
-            {
-                "persona": "founder_ceo",
-                "role_code": "CEO",
-                "title": "Chief Executive Officer",
-                "email": "aina_tunde@hotmail.com",
-                "departments": ["*"],
-                "authority_ceiling": "A3 (Unlimited)",
-                "erp_role": "Administrator",
-                "erp_link": "https://erp.mcsolutions.stream/app",
-            },
-            {
-                "persona": "cfo",
-                "role_code": "CFO",
-                "title": "Chief Financial Officer",
-                "email": "cfo@mcsolutions.stream",
-                "departments": ["D06", "D10", "D02"],
-                "authority_ceiling": "A2 ($10/day burn, $25,000 limit)",
-                "erp_role": "Accounts Manager, Accounts User, Auditor",
-                "erp_link": "https://erp.mcsolutions.stream/app/accounting",
-            },
-            {
-                "persona": "cto",
-                "role_code": "CTO",
-                "title": "Chief Technology Officer",
-                "email": "cto@mcsolutions.stream",
-                "departments": ["D05", "D04", "D08"],
-                "authority_ceiling": "A2 ($30/day burn, Infrastructure Gates)",
-                "erp_role": "System Manager",
-                "erp_link": "https://erp.mcsolutions.stream/app/settings",
-            },
-            {
-                "persona": "coo",
-                "role_code": "COO",
-                "title": "Chief Operating Officer",
-                "email": "coo@mcsolutions.stream",
-                "departments": ["D01", "D07", "D10"],
-                "authority_ceiling": "A2 ($15/day burn, Operations Execution)",
-                "erp_role": "Projects Manager, Stock Manager, Purchase Manager",
-                "erp_link": "https://erp.mcsolutions.stream/app/stock",
-            },
-            {
-                "persona": "commercial",
-                "role_code": "CCO",
-                "title": "Chief Commercial Officer",
-                "email": "commercial@mcsolutions.stream",
-                "departments": ["D02", "D03"],
-                "authority_ceiling": "A2 ($25/day burn, Deal Structuring)",
-                "erp_role": "Sales Manager, Sales User, Sales Master Manager",
-                "erp_link": "https://erp.mcsolutions.stream/app/selling",
-            },
-            {
-                "persona": "support",
-                "role_code": "Support",
-                "title": "Customer Success Lead",
-                "email": "support@mcsolutions.stream",
-                "departments": ["D07"],
-                "authority_ceiling": "A1 (Support Triage)",
-                "erp_role": "Support Team",
-                "erp_link": "https://erp.mcsolutions.stream/app/support",
-            },
-        ],
-    }
-
-
-@app.get("/v1/directives")
-async def list_directives(
-    target_role: Optional[str] = None,
-    _auth: str = Depends(verify_control_auth),
-):
-    results = directives_store
-    if target_role and target_role != "all":
-        results = [d for d in results if d.get("target_role") in (target_role, "all")]
-    return {"count": len(results), "directives": results}
-
-
-@app.post("/v1/directives", status_code=status.HTTP_201_CREATED)
-async def issue_directive(
-    req: DirectiveCreateRequest,
-    principal_actor: str = Depends(verify_principal_auth),
-):
-    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    directive_id = f"dir-{timestamp_str}"
-
-    role_titles = {
-        "all": "Company-Wide (All Charters D01–D11)",
-        "cto": "Chief Technology Officer (CTO)",
-        "cfo": "Chief Financial Officer (CFO)",
-        "coo": "Chief Operating Officer (COO)",
-        "commercial": "Chief Commercial Officer (CCO)",
-        "support": "Customer Success Lead",
-    }
-
-    record = {
-        "directive_id": directive_id,
-        "target_role": req.target_role,
-        "target_title": role_titles.get(req.target_role, f"Department {req.target_role}"),
-        "directive_type": req.directive_type,
-        "priority": req.priority,
-        "title": req.title,
-        "instructions": req.instructions,
-        "deliverables": req.deliverables,
-        "deadline": req.deadline,
-        "standing_authority_impact": req.standing_authority_impact,
-        "sync_erp_task": req.sync_erp_task,
-        "erp_task_id": f"TASK-2026-{datetime.now(timezone.utc).strftime('%m%d%H')}" if req.sync_erp_task else None,
-        "issuer": principal_actor,
-        "issuer_title": ROLE_AUTHORITY_SCOPES.get(principal_actor, {}).get("title", "Founder & CEO"),
-        "status": "issued",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "acknowledged_at": None,
-        "acknowledged_by": None,
-    }
-    directives_store.insert(0, record)
-    return record
-
-
-@app.post("/v1/directives/{directive_id}/status")
-async def update_directive_status(
-    directive_id: str,
-    req: DirectiveStatusUpdateRequest,
-    _principal: str = Depends(verify_principal_auth),
-):
-    directive = next((d for d in directives_store if d["directive_id"] == directive_id), None)
-    if not directive:
-        raise HTTPException(status_code=404, detail="Directive not found")
-
-    directive["status"] = req.status
-    if req.status == "acknowledged" and not directive.get("acknowledged_at"):
-        directive["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
-        directive["acknowledged_by"] = req.actor or "assigned_lead"
-    if req.status == "completed":
-        directive["completed_at"] = datetime.now(timezone.utc).isoformat()
-    return directive
-
+app = create_app()
