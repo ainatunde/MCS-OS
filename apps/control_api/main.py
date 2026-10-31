@@ -92,18 +92,20 @@ def create_app(store: Store | None = None):
     async def products(request: Request, principal: Principal = Depends(authenticate)):
         if principal.kind != "read_only":
             operator(principal)
-        targets = [("tv-insights", os.getenv("PULZZ_URL", "").rstrip("/") + "/ready"), ("mcs-erp", os.getenv("MCS_ERP_GATEWAY_URL", "").rstrip("/") + "/healthz")]
+        targets = [("tv-insights", os.getenv("PULZZ_URL", "").rstrip("/") + "/api/integrations/mcs-os/health"), ("mcs-erp", os.getenv("MCS_ERP_GATEWAY_URL", "").rstrip("/") + "/ready")]
         results = []
         async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
             for slug, url in targets:
                 status, detail = "unconfigured", "Endpoint not configured"
                 if url.startswith(("https://", "http://")):
                     try:
-                        headers = {"Authorization": "Bearer " + os.getenv("MCS_ERP_GATEWAY_TOKEN", "")} if slug == "mcs-erp" else {}
+                        from services.control.security import signed_headers
+                        headers = {"Authorization": "Bearer " + os.getenv("MCS_ERP_GATEWAY_TOKEN", "")} if slug == "mcs-erp" else signed_headers(os.environ["MCS_PULZZ_RECEIPT_TOKEN"], os.environ["MCS_PULZZ_SIGNING_SECRET"], {})
                         r = await client.get(url, headers=headers)
-                        status = "healthy" if r.status_code == 200 else "degraded"
-                        detail = "HTTP " + str(r.status_code)
-                    except httpx.HTTPError:
+                        remote = r.json().get("status", "unknown")
+                        status = "healthy" if r.status_code == 200 and remote == "healthy" else "degraded"
+                        detail = "Authenticated HTTP " + str(r.status_code) + "; workflow " + str(remote)
+                    except (httpx.HTTPError, ValueError, RuntimeError, KeyError):
                         status, detail = "down", "Connection unavailable"
                 results.append({"product_slug": slug, "health": {"status": status, "details": {"observation": detail}, "observed_at": time.time()}})
         return {"count": len(results), "products": results}

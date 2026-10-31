@@ -260,3 +260,22 @@ def test_financial_projection_mismatch_is_unhealthy_until_verified_recovery(stor
     monkeypatch.setattr(worker,"_gateway",lambda **kwargs:{"operation_outcome":"applied","provider_reference":"INV-QA","document_state":"draft","amount_minor":10000,"currency":"NGN"})
     assert worker.refresh_one()
     assert inspect(store)["checks"]["integration_reconciliation_integrity"]
+
+
+def test_cancelled_claim_cannot_dispatch_after_a_stale_source_read(store,monkeypatch):
+    monkeypatch.setenv("PULZZ_URL","http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN","fixture-receipt-token-32-characters-minimum")
+    p={"source_kind":"lead","source_id":1,"source_revision":"r1","external_ref":"tvinsights:lead:1","eligible_for_draft":True,
+       "customer":{"name":"QA contact"},"consent_version":"1","consented_at":"2026-10-31T00:00:00Z"}
+    with store.transaction() as s:
+        s.add(Event(producer="tv-insights",event_id="race",event_type="crm.lead.inquiry.v1",product_slug="tv-insights",content_hash=digest(p),envelope={"payload":p}))
+    calls=[]
+    def stale_read(request):
+        with store.transaction() as s:
+            row=s.scalar(select(Action)); row.status="cancelled"; row.fence+=1; row.lease_owner=None
+        return httpx.Response(200,json={"payload":p})
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(stale_read)))
+    monkeypatch.setattr(worker,"_gateway",lambda **kwargs:calls.append(kwargs))
+    assert worker.route_one() and worker.execute_one()
+    assert calls==[]
+    with store.transaction() as s:assert s.scalar(select(Action)).status=="cancelled"

@@ -15,6 +15,7 @@ def observe_dependencies(store, client=None):
     try:
         for name in ("erp", "pulzz"):
             good = False
+            reachable = False
             try:
                 if name == "erp":
                     url = os.environ["MCS_ERP_GATEWAY_URL"].rstrip("/") + "/ready"
@@ -23,11 +24,13 @@ def observe_dependencies(store, client=None):
                     url = os.environ["PULZZ_URL"].rstrip("/") + "/api/integrations/mcs-os/health"
                     headers = signed_headers(os.environ["MCS_PULZZ_RECEIPT_TOKEN"], os.environ["MCS_PULZZ_SIGNING_SECRET"], {})
                 response = client.get(url, headers=headers)
-                good = response.status_code == 200 and response.json().get("status") == "healthy"
+                status = response.json().get("status")
+                reachable = response.status_code in {200, 503} and status in {"healthy", "degraded"}
+                good = response.status_code == 200 and status == "healthy"
             except (KeyError, RuntimeError, ValueError, httpx.HTTPError):
                 pass
             with store.transaction() as s:
-                store.put(s, "dependency", name, {"healthy": good, "observed_at": time.time()})
+                store.put(s, "dependency", name, {"healthy": good, "reachable": reachable, "observed_at": time.time()})
     finally:
         if owned:
             client.close()
@@ -54,7 +57,8 @@ def inspect(store, now=None, *, repair=True):
         if os.getenv("MCS_OS_ENV", "development") != "development":
             for name in ("erp", "pulzz"):
                 row = s.get(Record, ("dependency", name))
-                checks[name + "_authenticated_connectivity"] = bool(row and row.body.get("healthy") and now - row.updated_at < 120)
+                checks[name + "_authenticated_connectivity"] = bool(row and row.body.get("reachable") and now - row.updated_at < 120)
+                checks[name + "_workflow_consistency"] = bool(row and row.body.get("healthy") and now - row.updated_at < 120)
         if not repair:
             return {"status": "healthy" if all(checks.values()) else "degraded", "checks": checks, "observed_at": now}
         # Only unsent work is safely reclaimable without a provider lookup.
