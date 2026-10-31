@@ -21,7 +21,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -273,42 +273,9 @@ directives_store: List[Dict[str, Any]] = [
 ]
 
 
-def _is_auth_enforced() -> bool:
-    return (
-        os.environ.get("MCS_OS_AUTH_REQUIRED", "0") == "1"
-        or os.environ.get("MCS_OS_ENV", "development").lower() == "production"
-    )
+from apps.control_api.security import enforced as _is_auth_enforced, verify_control_auth, verify_principal_auth, register_sessions
 
-
-async def verify_control_auth(
-    authorization: Optional[str] = Header(default=None),
-    x_mcs_api_key: Optional[str] = Header(default=None),
-) -> str:
-    expected_token = os.environ.get("MCS_CONTROL_API_TOKEN", "")
-    provided = x_mcs_api_key or ""
-    if authorization and authorization.lower().startswith("bearer "):
-        provided = authorization[7:].strip()
-
-    if _is_auth_enforced():
-        if not expected_token or not provided or not hmac.compare_digest(provided, expected_token):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Valid Bearer token or X-MCS-API-Key required",
-            )
-    return provided or "dev-session"
-
-
-async def verify_principal_auth(
-    _token: str = Depends(verify_control_auth),
-    x_mcs_actor: Optional[str] = Header(default=None),
-) -> str:
-    actor = x_mcs_actor or "founder_ceo"
-    if _is_auth_enforced() and (not x_mcs_actor or x_mcs_actor not in PRINCIPAL_ACTORS):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Principal role (X-MCS-Actor) required for A3 approvals and emergency halts",
-        )
-    return actor
+register_sessions(app)
 
 
 # Pydantic Request Models
@@ -324,7 +291,7 @@ class EventSubmissionRequest(BaseModel):
 
 class ApprovalDecisionRequest(BaseModel):
     decision: str  # "approve_content" | "approve_and_send" | "deny" | "revoke" | "request_revision"
-    actor: str = "founder_ceo"
+    actor: Optional[str] = None
     rationale: Optional[str] = None
 
 
@@ -363,6 +330,8 @@ async def healthz():
     return {
         "status": "healthy",
         "service": "mcs-control-api",
+        "commit": os.environ.get("SOURCE_COMMIT", "unknown"),
+        "security_release": "console-auth-v1",
         "version": "2.2.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "active_halts": list(policy_engine.active_halts),
@@ -442,6 +411,11 @@ async def list_tasks(department: Optional[str] = None, _auth: str = Depends(veri
 
 @app.post("/v1/action-intents", status_code=status.HTTP_201_CREATED)
 async def propose_action_intent(envelope: ActionEnvelope, _auth: str = Depends(verify_control_auth)):
+    allowed = ROLE_AUTHORITY_SCOPES.get(_auth, {}).get("departments", [])
+    if _is_auth_enforced() and "*" not in allowed and envelope.department_id not in allowed:
+        raise HTTPException(status_code=403, detail="Action outside authenticated department mandate")
+    if envelope.action_id in actions_store:
+        raise HTTPException(status_code=409, detail="Action IDs are immutable; propose a new revision")
     decision = policy_engine.evaluate(envelope)
 
     record = {
@@ -495,7 +469,9 @@ async def decide_approval(
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
 
-    actor = req.actor or principal_actor
+    if req.actor and req.actor != principal_actor:
+        raise HTTPException(status_code=403, detail="Actor cannot replace authenticated executive")
+    actor = principal_actor
     if actor not in PRINCIPAL_ACTORS:
         raise HTTPException(status_code=403, detail=f"Actor '{actor}' is not an authorized A3 Principal or Executive")
 
@@ -508,6 +484,15 @@ async def decide_approval(
             status_code=403,
             detail=f"Actor '{actor}' is not authorized to sign off for department {dept}. Mandate: {allowed_depts}",
         )
+
+    if req.decision in {"approve_content", "approve_and_send"}:
+        if action.get("status") not in {"awaiting_approval", "content_approved"}:
+            raise HTTPException(status_code=409, detail="Only pending policy-admissible actions may be approved")
+        if action.get("policy_decision", {}).get("assigned_authority") == "A4":
+            raise HTTPException(status_code=403, detail="Prohibited actions cannot be approved")
+        envelope = action.get("envelope", {})
+        if not isinstance(envelope.get("payload"), dict) or envelope.get("canonical_payload_hash") != canonical_payload_hash(envelope["payload"]) or approval.get("payload_hash") != envelope.get("canonical_payload_hash"):
+            raise HTTPException(status_code=409, detail="Approval requires an exact qualified action payload")
 
     product_slug = action["envelope"].get("product_slug", "corporate")
     approval_ref = f"appr-{action_id}"
@@ -620,6 +605,8 @@ async def create_halt(req: HaltRequest, principal_actor: str = Depends(verify_pr
 
 @app.delete("/v1/halts/{scope}")
 async def remove_halt(scope: str, _principal: str = Depends(verify_principal_auth)):
+    if scope == "company_wide" and not ROLE_AUTHORITY_SCOPES.get(_principal, {}).get("can_halt_company", False):
+        raise HTTPException(status_code=403, detail="Company halt authority required")
     policy_engine.lift_halt(scope)
     return {"status": "halt_lifted", "scope": scope, "active_halts": list(policy_engine.active_halts)}
 
@@ -714,6 +701,8 @@ async def issue_directive(
     req: DirectiveCreateRequest,
     principal_actor: str = Depends(verify_principal_auth),
 ):
+    if principal_actor not in {"founder_ceo", "ceo", "principal", "board_chair"}:
+        raise HTTPException(status_code=403, detail="Principal required to issue executive directives")
     timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     directive_id = f"dir-{timestamp_str}"
 
@@ -760,10 +749,15 @@ async def update_directive_status(
     if not directive:
         raise HTTPException(status_code=404, detail="Directive not found")
 
+    principal_roles = {"founder_ceo", "ceo", "principal", "board_chair"}
+    if _principal not in principal_roles and directive.get("target_role") != _principal:
+        raise HTTPException(status_code=403, detail="Directive outside authenticated mandate")
+    if req.status == "revoked" and _principal not in principal_roles:
+        raise HTTPException(status_code=403, detail="Principal required to revoke directives")
     directive["status"] = req.status
     if req.status == "acknowledged" and not directive.get("acknowledged_at"):
         directive["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
-        directive["acknowledged_by"] = req.actor or "assigned_lead"
+        directive["acknowledged_by"] = _principal
     if req.status == "completed":
         directive["completed_at"] = datetime.now(timezone.utc).isoformat()
     return directive

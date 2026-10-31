@@ -6,7 +6,7 @@
  * Surfaces:
  *   1. Executive Leadership & Department Charters (D01–D11) with Live Role Switching
  *   2. Role-Scoped Decision Inbox (Approve Content vs Approve & Send vs Deny)
- *   3. Team Credentials & ERPNext Access Directory (CFO, CTO, CCO, COO, Support)
+ *   3. Team Directory & ERPNext Access Directory (CFO, CTO, CCO, COO, Support)
  *   4. Emergency Halt Controls (Company-Wide & Per-Product Kill Switches)
  *   5. Real-Time Model Spend, ERP Balances & System Assurance
  */
@@ -14,6 +14,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import MCSLogo from '@/components/MCSLogo';
+import SecuritySession, { securityFetch } from '@/components/SecuritySession';
 
 type Persona = 'founder_ceo' | 'cfo' | 'cto' | 'coo' | 'commercial';
 
@@ -51,7 +52,6 @@ interface TeamMember {
   persona: Persona;
   title: string;
   email: string;
-  password_hint: string;
   roles: string;
   department: string;
   erp_desk_url: string;
@@ -78,8 +78,12 @@ interface ExecutiveDirective {
   acknowledged_by?: string | null;
 }
 
-export default function CommandCentre() {
-  const [activePersona, setActivePersona] = useState<Persona>('founder_ceo');
+export default function ProtectedCommandCentre() {
+  return <SecuritySession>{role => <CommandCentre sessionRole={role} />}</SecuritySession>;
+}
+
+function CommandCentre({ sessionRole }: { sessionRole: string }) {
+  const [activePersona, setActivePersona] = useState<Persona>(sessionRole as Persona);
   const [inboxTab, setInboxTab] = useState<'my_mandate' | 'all'>('my_mandate');
   const [showTeamModal, setShowTeamModal] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -172,7 +176,6 @@ export default function CommandCentre() {
       persona: 'founder_ceo',
       title: 'Chief Executive Officer',
       email: 'aina_tunde@hotmail.com',
-      password_hint: 'Site Admin Password',
       roles: 'Administrator, System Manager',
       department: 'Corporate Governance & Executive (D01–D11)',
       erp_desk_url: 'https://erp.mcsolutions.stream/app',
@@ -182,7 +185,6 @@ export default function CommandCentre() {
       persona: 'cfo',
       title: 'Chief Financial Officer',
       email: 'cfo@mcsolutions.stream',
-      password_hint: 'MCS_CFO_2026_Secure!',
       roles: 'Accounts Manager, Accounts User, Auditor, Desk User',
       department: 'D06 Finance & Treasury, D10 Vendor Admin',
       erp_desk_url: 'https://erp.mcsolutions.stream/app/accounting',
@@ -192,7 +194,6 @@ export default function CommandCentre() {
       persona: 'cto',
       title: 'Chief Technology Officer',
       email: 'cto@mcsolutions.stream',
-      password_hint: 'MCS_CTO_2026_Secure!',
       roles: 'System Manager, Desk User, Employee',
       department: 'D05 Technology & Reliability, D04 Intelligence, D08 Product',
       erp_desk_url: 'https://erp.mcsolutions.stream/app/settings',
@@ -202,7 +203,6 @@ export default function CommandCentre() {
       persona: 'commercial',
       title: 'Chief Commercial Officer',
       email: 'commercial@mcsolutions.stream',
-      password_hint: 'MCS_Commercial_2026_Secure!',
       roles: 'Sales Manager, Sales User, Sales Master Manager, Desk User',
       department: 'D02 Sales & Partnerships, D03 Marketing',
       erp_desk_url: 'https://erp.mcsolutions.stream/app/selling',
@@ -212,7 +212,6 @@ export default function CommandCentre() {
       persona: 'coo',
       title: 'Chief Operating Officer',
       email: 'coo@mcsolutions.stream',
-      password_hint: 'MCS_COO_2026_Secure!',
       roles: 'Projects Manager, Stock Manager, Purchase Manager, Desk User',
       department: 'D01 Operations & COO, D07 Customer Success',
       erp_desk_url: 'https://erp.mcsolutions.stream/app/stock',
@@ -222,7 +221,6 @@ export default function CommandCentre() {
       persona: 'coo',
       title: 'Customer Success Lead',
       email: 'support@mcsolutions.stream',
-      password_hint: 'MCS_Support_2026_Secure!',
       roles: 'Support Team, Desk User, Employee',
       department: 'D07 Customer Success & Operations',
       erp_desk_url: 'https://erp.mcsolutions.stream/app/support',
@@ -273,46 +271,22 @@ export default function CommandCentre() {
   const activeMember = teamMembers.find(m => m.persona === activePersona) || teamMembers[0];
 
   const handleDecision = async (id: string, decision: 'approve_content' | 'approve_and_send' | 'deny') => {
-    const item = approvals.find(a => a.id !== id);
-    setApprovals(approvals.filter(a => a.id !== id));
-
-    const decisionText = decision === 'approve_content'
-      ? 'Content Approved'
-      : decision === 'approve_and_send'
-      ? 'Approved & Released to Queue'
-      : 'Denied';
-
-    const logEntry = `[${new Date().toLocaleTimeString()}] ${id} marked as ${decisionText} by ${activeMember.role_code} (${activeMember.email})`;
-    setAuditLog(prev => [logEntry, ...prev.slice(0, 4)]);
-
-    // Call Control API asynchronously
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
-      await fetch(`${apiUrl}/v1/approvals/${id}/decide`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-MCS-Actor': activePersona,
-        },
-        body: JSON.stringify({ decision, actor: activePersona }),
-      });
-    } catch (e) {
-      console.log('Control API sign-off synced locally (offline/standalone mode)');
-    }
+      await securityFetch(`${apiUrl}/v1/approvals/${id}/decide`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision})});
+      setApprovals(prev => prev.filter(a => a.id !== id));
+      setAuditLog(prev => [`${id}: ${decision} confirmed by server`, ...prev.slice(0,4)]);
+    } catch(e) { alert(e instanceof Error ? e.message : 'Decision was not accepted.'); }
   };
 
-  const toggleHalt = (slug: string) => {
-    if (slug === 'company_wide' && activePersona !== 'founder_ceo' && activePersona !== 'coo') {
-      alert(`Permission Denied: Company-Wide Emergency Halt requires CEO or COO authorization. Current role: ${activeMember.role_code}`);
-      return;
-    }
-    if (activeHalts.includes(slug)) {
-      setActiveHalts(activeHalts.filter(s => s !== slug));
-      setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] Halt LIFTED for ${slug} by ${activeMember.role_code}`, ...prev.slice(0, 4)]);
-    } else {
-      setActiveHalts([...activeHalts, slug]);
-      setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] EMERGENCY HALT triggered for ${slug} by ${activeMember.role_code}`, ...prev.slice(0, 4)]);
-    }
+  const toggleHalt = async (slug: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
+      const active = activeHalts.includes(slug);
+      await securityFetch(`${apiUrl}/v1/halts${active ? `/${encodeURIComponent(slug)}` : ''}`, {method:active?'DELETE':'POST',headers:{'Content-Type':'application/json'},body:active?undefined:JSON.stringify({scope:slug,reason:'Executive containment from console'})});
+      setActiveHalts(prev => active ? prev.filter(s => s !== slug) : [...prev,slug]);
+      setAuditLog(prev => [`${slug}: halt ${active?'lifted':'registered'} by server`,...prev.slice(0,4)]);
+    } catch(e) { alert(e instanceof Error ? e.message : 'Containment was not confirmed.'); }
   };
 
   const copyToClipboard = (text: string, key: string) => {
@@ -357,6 +331,11 @@ export default function CommandCentre() {
       acknowledged_by: null,
     };
 
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
+      const response = await securityFetch(`${apiUrl}/v1/directives`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newDirective)});
+      Object.assign(newDirective, await response.json());
+    } catch(e) { alert(e instanceof Error ? e.message : 'Directive was not accepted.'); return; }
     setDirectives([newDirective, ...directives]);
     setDirectiveFeedback(`Directive "${newDirective.title}" successfully dispatched to ${newDirective.target_title}`);
     setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] DIRECTIVE DISPATCHED: "${newDirective.title}" -> ${newDirective.target_role.toUpperCase()}`, ...prev.slice(0, 4)]);
@@ -374,23 +353,15 @@ export default function CommandCentre() {
     });
     setTimeout(() => setDirectiveFeedback(null), 5000);
 
-    // Call Control API asynchronously
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
-      await fetch(`${apiUrl}/v1/directives`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-MCS-Actor': activePersona,
-        },
-        body: JSON.stringify(newDirective),
-      });
-    } catch (err) {
-      console.log('Directive persisted locally');
-    }
+
   };
 
   const handleUpdateDirectiveStatus = async (id: string, newStatus: ExecutiveDirective['status']) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
+      await securityFetch(`${apiUrl}/v1/directives/${id}/status`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:newStatus})});
+    } catch(e) { alert(e instanceof Error ? e.message : 'Status was not accepted.'); return; }
+
     setDirectives(directives.map(d => {
       if (d.directive_id === id) {
         return {
@@ -405,19 +376,7 @@ export default function CommandCentre() {
 
     setAuditLog(prev => [`[${new Date().toLocaleTimeString()}] Directive ${id} status updated to ${newStatus.toUpperCase()}`, ...prev.slice(0, 4)]);
 
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://os.mcsolutions.stream';
-      await fetch(`${apiUrl}/v1/directives/${id}/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-MCS-Actor': activePersona,
-        },
-        body: JSON.stringify({ status: newStatus, actor: activeMember.email }),
-      });
-    } catch (err) {
-      console.log('Status updated locally');
-    }
+
   };
 
   const setRelativeDeadline = (daysOrType: number | 'today' | 'tomorrow' | 'end_of_week' | 'end_of_month') => {
@@ -522,31 +481,31 @@ export default function CommandCentre() {
           <div className="flex items-center bg-white border border-stone-300 rounded-lg p-1 text-xs font-medium shadow-sm">
             <span className="text-stone-400 px-2 font-semibold">Role:</span>
             <button
-              onClick={() => setActivePersona('founder_ceo')}
+              disabled={sessionRole !== 'founder_ceo'} onClick={() => setActivePersona('founder_ceo')}
               className={`px-2.5 py-1 rounded transition ${activePersona === 'founder_ceo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CEO
             </button>
             <button
-              onClick={() => setActivePersona('cfo')}
+              disabled={sessionRole !== 'cfo'} onClick={() => setActivePersona('cfo')}
               className={`px-2.5 py-1 rounded transition ${activePersona === 'cfo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CFO
             </button>
             <button
-              onClick={() => setActivePersona('cto')}
+              disabled={sessionRole !== 'cto'} onClick={() => setActivePersona('cto')}
               className={`px-2.5 py-1 rounded transition ${activePersona === 'cto' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CTO
             </button>
             <button
-              onClick={() => setActivePersona('coo')}
+              disabled={sessionRole !== 'coo'} onClick={() => setActivePersona('coo')}
               className={`px-2.5 py-1 rounded transition ${activePersona === 'coo' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               COO
             </button>
             <button
-              onClick={() => setActivePersona('commercial')}
+              disabled={sessionRole !== 'commercial'} onClick={() => setActivePersona('commercial')}
               className={`px-2.5 py-1 rounded transition ${activePersona === 'commercial' ? 'bg-orange-600 text-white font-bold shadow-xs' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'}`}
             >
               CCO
@@ -1383,7 +1342,7 @@ export default function CommandCentre() {
             <div className="flex justify-between items-start border-b pb-4">
               <div>
                 <h3 className="text-xl font-bold text-stone-900">MCS Executive Team Logins</h3>
-                <p className="text-xs text-stone-500 mt-0.5">Authoritative ERPNext v15 System Accounts (Live at erp.mcsolutions.stream)</p>
+                <p className="text-xs text-stone-500 mt-0.5">Company account directory — passwords are managed in ERPNext</p>
               </div>
               <button
                 onClick={() => setShowTeamModal(false)}
@@ -1405,7 +1364,6 @@ export default function CommandCentre() {
                     </div>
                     <div className="text-xs text-stone-600 mt-1 flex flex-col gap-0.5">
                       <span>Email: <code className="text-orange-600 font-semibold">{member.email}</code></span>
-                      <span>Password: <code className="text-emerald-700 font-mono font-semibold">{member.password_hint}</code></span>
                       <span className="text-[11px] text-stone-500">Roles: {member.roles}</span>
                     </div>
                   </div>
@@ -1416,12 +1374,6 @@ export default function CommandCentre() {
                       className="px-2.5 py-1.5 bg-white border border-stone-300 hover:bg-stone-100 rounded text-xs font-medium text-stone-700 transition"
                     >
                       {copiedKey === `email-${member.email}` ? 'Copied Email!' : 'Copy Email'}
-                    </button>
-                    <button
-                      onClick={() => copyToClipboard(member.password_hint, `pwd-${member.email}`)}
-                      className="px-2.5 py-1.5 bg-white border border-stone-300 hover:bg-stone-100 rounded text-xs font-medium text-stone-700 transition"
-                    >
-                      {copiedKey === `pwd-${member.email}` ? 'Copied Pwd!' : 'Copy Pwd'}
                     </button>
                     <a
                       href={member.erp_desk_url}
