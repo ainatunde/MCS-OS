@@ -4,6 +4,8 @@ import hashlib
 import hmac
 import os
 import time
+import httpx
+from cryptography.fernet import Fernet, InvalidToken
 
 from fastapi import HTTPException, Request
 from sqlalchemy import select
@@ -24,15 +26,70 @@ class Principal:
         return "*" in DEPARTMENTS.get(self.role, []) or department in DEPARTMENTS.get(self.role, [])
 
 
-def authenticate(request: Request) -> Principal:
+def session_cipher():
+    key = os.environ.get("MCS_SESSION_ENCRYPTION_KEY", "")
+    try:
+        return Fernet(key.encode())
+    except (ValueError, TypeError):
+        raise HTTPException(503, "Session encryption key unavailable") from None
+
+
+def bind_session(request, sid, email, role):
+    """Persist revocation/expiry without storing the ERP credential in plaintext."""
+    key = "session:" + token_hash(sid)
+    parent_id = "operator:" + ("Administrator" if email.casefold() == "administrator" else email.casefold())
+    with request.app.state.store.transaction() as s:
+        parent = s.get(Identity, parent_id)
+        if not parent or not parent.enabled or parent.role != role:
+            raise HTTPException(401, "Operator directory requires provisioning")
+        row = s.get(Identity, key)
+        if row is None:
+            row = Identity(identity_id=key, kind="session", role=role, parent_id=parent_id, enabled=True,
+                token_hash=token_hash(sid), expires_at=time.time() + 1800,
+                scopes={"email": email, "provider_session": session_cipher().encrypt(sid.encode()).decode()})
+            s.add(row)
+        if not row.enabled or row.expires_at <= time.time() or row.role != role:
+            raise HTTPException(401, "Session expired or revoked; sign in again")
+        return Principal(row.identity_id, role, "session", {"email": email})
+
+
+def validate_provider_session(identity):
+    """Dispatch revalidates the same ERP session that authorized this approval."""
+    if identity.kind != "session":
+        return os.getenv("MCS_OS_ENV", "development") == "development"
+    from apps.control_api.security import bindings, erp_url
+    try:
+        sid = session_cipher().decrypt(identity.scopes["provider_session"].encode()).decode()
+        response = httpx.get(erp_url() + "/api/method/frappe.auth.get_logged_user",
+            cookies={"sid": sid}, timeout=10, follow_redirects=False)
+        user = response.json().get("message") if response.status_code == 200 else None
+        return user == identity.scopes.get("email") and bindings().get(user.casefold()) == identity.role
+    except (httpx.HTTPError, ValueError, KeyError, InvalidToken, HTTPException, AttributeError):
+        return False
+
+
+async def authenticate(request: Request) -> Principal:
+    from apps.control_api.security import COOKIE, origin_check, resolve_session
+    sid = request.cookies.get(COOKIE)
+    if sid:
+        origin_check(request)
+        email, role = await resolve_session(sid)
+        return bind_session(request, sid, email, role)
     provided = request.headers.get("authorization", "")
     bearer = provided[7:].strip() if provided.lower().startswith("bearer ") else request.cookies.get("mcs_session", "")
+    legacy = os.getenv("MCS_CONTROL_API_TOKEN", "")
+    if legacy and bearer and hmac.compare_digest(legacy, bearer):
+        if request.method not in {"GET", "HEAD"}:
+            raise HTTPException(403, "Shared service credential is read-only")
+        return Principal("legacy:read_only", "read_only", "read_only", {})
     if not bearer:
         raise HTTPException(401, "Sign in required")
     with request.app.state.store.transaction() as s:
         identity = s.scalar(select(Identity).where(Identity.token_hash == token_hash(bearer)))
         if not identity or not identity.enabled or (identity.expires_at is not None and identity.expires_at <= time.time()):
             raise HTTPException(401, "Session or service credential expired/revoked")
+        if os.getenv("MCS_OS_ENV", "development") != "development" and identity.kind != "service":
+            raise HTTPException(401, "Individual ERP sign-in required")
         if identity.parent_id:
             parent = s.get(Identity, identity.parent_id)
             if not parent or not parent.enabled or parent.role != identity.role:

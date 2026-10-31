@@ -169,3 +169,64 @@ def test_receipt_retries_preserve_exact_body(store,monkeypatch):
     with store.transaction() as s:s.get(Action,"recovery").next_attempt=0
     worker.deliver_one()
     assert len(bodies)==2 and bodies[0]==bodies[1]
+
+
+def test_guardian_read_probe_does_not_hide_stopped_daemon(store):
+    with store.transaction() as s:
+        store.put(s,"heartbeat","integration-worker",{"at":time.time()})
+    assert inspect(store,repair=False)["checks"]["integration_guardian_heartbeat"] is False
+    with store.transaction() as s:
+        assert s.get(Record,("heartbeat","integration-guardian")) is None
+    inspect(store)
+    assert inspect(store,repair=False)["checks"]["integration_guardian_heartbeat"] is True
+
+
+def test_health_rejects_missing_schema_marker(store):
+    with store.transaction() as s:
+        s.delete(s.get(Record,("schema","version")))
+    with TestClient(create_app(store)) as c:
+        assert c.get("/healthz").status_code==503
+
+
+def test_crm_and_sponsorship_route_to_erp_with_product_scope(store):
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(500))))
+    for kind in ("lead","sponsorship"):
+        p={"source_kind":kind,"source_id":1,"source_revision":"r1","external_ref":"tvinsights:"+kind+":1",
+           "eligible_for_draft":True,"customer_ref":"tvinsights:sponsor:1","customer":{"name":"Àdé","organisation":"Fixture"},
+           "amount_minor":12345,"currency":"NGN","consent_version":"1","consented_at":"2026-10-31T00:00:00+00:00"}
+        with store.transaction() as s:
+            s.add(Event(producer="tv-insights",event_id=kind,event_type="crm.lead.inquiry.v1" if kind=="lead" else "commercial.order.requested.v1",product_slug="tv-insights",content_hash=digest(p),envelope={"payload":p}))
+        assert worker.route_one()
+    with store.transaction() as s:
+        rows=s.scalars(select(Action)).all()
+        assert len(rows)==3 and all(r.provider=="mcs-erp" and r.product_slug=="tv-insights" for r in rows)
+        invoice=next(r for r in rows if r.dependency_id)
+        assert invoice.envelope["payload"]["items"][0]["item_code"]=="TV-Insights Sponsorship"
+
+
+def test_withdrawal_cancels_unsent_crm_and_erases_copied_contact(store):
+    p={"source_kind":"lead","source_id":1,"source_revision":"r1","external_ref":"tvinsights:lead:1","eligible_for_draft":True,
+       "customer":{"name":"Private contact","email":"private@example.invalid"},"consent_version":"1","consented_at":"2026-10-31T00:00:00Z"}
+    with store.transaction() as s:
+        s.add(Event(producer="tv-insights",event_id="lead-create",event_type="crm.lead.inquiry.v1",product_slug="tv-insights",content_hash=digest(p),envelope={"payload":p}))
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(500))))
+    worker.route_one()
+    withdrawal={"source_kind":"lead","source_id":1,"source_revision":"r2","external_ref":"tvinsights:lead:1","eligible_for_draft":False}
+    with store.transaction() as s:
+        s.add(Event(producer="tv-insights",event_id="withdrawal",event_type="commercial.source.withdrawn.v1",product_slug="tv-insights",content_hash=digest(withdrawal),envelope={"payload":withdrawal}))
+    worker.route_one()
+    with store.transaction() as s:
+        row=s.scalar(select(Action))
+        assert row.status=="cancelled" and "private@example.invalid" not in str(row.envelope)
+        assert "private@example.invalid" not in str(s.get(Event,("tv-insights","lead-create")).envelope)
+
+
+def test_unchanged_document_sends_periodic_freshness_receipt(store,monkeypatch):
+    seed_action(store,status="confirmed",callback_state="delivered",reconcile_only=False,updated_at=time.time()-400,
+                receipt={"provider_reference":"INV-FIXTURE","document_state":"draft","amount_minor":10000,"currency":"NGN"})
+    worker=IntegrationWorker(store,object())
+    monkeypatch.setattr(worker,"_gateway",lambda **kwargs:{"operation_outcome":"applied","provider_reference":"INV-FIXTURE","document_state":"draft","amount_minor":10000,"currency":"NGN"})
+    assert worker.refresh_one()
+    with store.transaction() as s:
+        row=s.get(Action,"recovery")
+        assert row.callback_state=="pending" and row.document_sequence==1

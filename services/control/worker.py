@@ -14,11 +14,11 @@ import uuid
 import httpx
 from sqlalchemy import or_, select
 
-from services.control.security import DEPARTMENTS, signed_headers
+from services.control.security import DEPARTMENTS, signed_headers, validate_provider_session
 from services.control.store import Action, Event, Identity, Record, Store, configured_store, digest
 
 log = logging.getLogger(__name__)
-KINDS = {"plan_request": "TV-Insights Subscription", "intel_report": "TV-Insights Intelligence Report", "lead_assignment": "TV-Insights Lead Delivery"}
+KINDS = {"plan_request": "TV-Insights Subscription", "intel_report": "TV-Insights Intelligence Report", "lead_assignment": "TV-Insights Lead Delivery", "sponsorship": "TV-Insights Sponsorship"}
 
 
 class IntegrationWorker:
@@ -46,32 +46,56 @@ class IntegrationWorker:
             if e is None:
                 return False
             try:
-                p = e.envelope["payload"]
-                if e.producer != "tv-insights" or e.product_slug != "tv-insights":
-                    raise ValueError("No qualified workflow for producer/product")
-                if p.get("source_kind") not in {*KINDS, "lead", "sponsorship"} or not p.get("source_revision"):
-                    raise ValueError("Versioned source identity required")
-                self.store.put(s, "task", e.event_id, {"department_id": "D02" if p["source_kind"] == "lead" else "D06", "product_slug": e.product_slug, "source_kind": p["source_kind"], "source_id": p["source_id"], "source_revision": p["source_revision"], "status": "observed", "event_id": e.event_id}, e.product_slug)
-                if p["source_kind"] == "sponsorship" or not p.get("eligible_for_draft", p["source_kind"] == "lead"):
-                    e.status, e.error = "blocked", "Commercial eligibility/contract requires review"
-                    return True
-                if p["source_kind"] == "lead":
-                    if not p.get("consent_version") or not p.get("consented_at"):
-                        raise ValueError("CRM purpose/consent evidence required")
-                    self.enqueue(s, p["external_ref"], "crm.lead.upsert.v1", "D02", {"lead_name": p["customer"]["name"], "email_id": p["customer"].get("email"), "company_name": p["customer"].get("organisation"), "status": "Lead"}, e)
-                else:
-                    amount, currency = p.get("amount_minor"), p.get("currency")
-                    if type(amount) is not int or amount <= 0 or currency not in {"NGN", "USD"}:
-                        raise ValueError("Positive integer amount and qualified currency required")
-                    c = p["customer"]
-                    if not c.get("name"):
-                        raise ValueError("Customer identity required")
-                    customer_key = p["customer_ref"]
-                    customer_id = self.enqueue(s, customer_key, "finance.customer.upsert.v1", "D06", {"customer_name": c["name"], "customer_type": "Company" if c.get("organisation") else "Individual", "customer_group": "Insights Suppliers" if p["source_kind"] == "lead_assignment" else "Insights Subscribers", "territory": "All Territories"}, e)
-                    invoice = {"customer_ref": customer_key, "currency": currency, "company": self.company, "items": [{"item_code": KINDS[p["source_kind"]], "qty": 1, "rate": str(amount // 100) + "." + str(amount % 100).zfill(2), "cost_center": "TV-Insights-Pulzz - MCS"}], "cost_center": "TV-Insights-Pulzz - MCS", "source_invoice_reference": p.get("invoice_reference")}
-                    self.enqueue(s, p["external_ref"], "finance.invoice.create_draft.v1", "D06", invoice, e, customer_id)
-                e.status = "routed"
-                self.store.audit(s, "workflow:D06", "event.routed", e.event_id)
+                with s.begin_nested():
+                    p = e.envelope["payload"]
+                    if e.producer != "tv-insights" or e.product_slug != "tv-insights":
+                        raise ValueError("No qualified workflow for producer/product")
+                    if p.get("source_kind") not in {*KINDS, "lead", "sponsorship"} or not p.get("source_revision"):
+                        raise ValueError("Versioned source identity required")
+                    if p.get("company", self.company) != self.company:
+                        raise ValueError("Source company scope mismatch")
+                    self.store.put(s, "task", e.event_id, {"department_id": "D02" if p["source_kind"] == "lead" else "D06", "product_slug": e.product_slug, "source_kind": p["source_kind"], "source_id": p["source_id"], "source_revision": p["source_revision"], "status": "observed", "event_id": e.event_id}, e.product_slug)
+                    if e.event_type == "commercial.source.withdrawn.v1":
+                        original = s.get(Action, "int-" + digest(p["external_ref"])[:48])
+                        if p["source_kind"] == "lead" and original:
+                            original.callback_state = "none"
+                            original.callback_body = None
+                            # Keep the original input hash for audit, erase copied contacts.
+                            original.envelope = {**original.envelope, "payload": {"lead_name": "Withdrawn Pulzz contact"}}
+                            for old_event in s.scalars(select(Event).where(Event.producer == e.producer)):
+                                old_payload = old_event.envelope.get("payload", {})
+                                if old_payload.get("source_kind") == "lead" and old_payload.get("source_id") == p["source_id"]:
+                                    old_event.envelope = {**old_event.envelope, "payload": {k: v for k, v in old_payload.items() if k not in {"customer", "lead_name", "contact_email", "contact_phone", "title", "organisation"}}}
+                            if original.status in {"ready", "leased", "awaiting_approval"} and not original.reconcile_only:
+                                original.status = "cancelled"
+                            else:
+                                target = self.enqueue(s, p["external_ref"] + ":suppress:" + p["source_revision"][:16], "crm.lead.suppress.v1", "D02", {"target_external_ref": p["external_ref"]}, e, original.action_id)
+                                s.flush()
+                                s.get(Action, target).document_sequence = original.document_sequence + 1
+                        e.status = "routed"
+                        return True
+                    if e.event_type not in {"commercial.order.requested.v1", "commercial.plan.requested.v1", "crm.lead.inquiry.v1"}:
+                        raise ValueError("Unqualified source event type")
+                    if not p.get("eligible_for_draft", p["source_kind"] == "lead"):
+                        e.status, e.error = "blocked", "Commercial eligibility/contract requires review"
+                        return True
+                    if p["source_kind"] == "lead":
+                        if not p.get("consent_version") or not p.get("consented_at"):
+                            raise ValueError("CRM purpose/consent evidence required")
+                        self.enqueue(s, p["external_ref"], "crm.lead.upsert.v1", "D02", {"lead_name": p["customer"]["name"], "email_id": p["customer"].get("email"), "company_name": p["customer"].get("organisation"), "status": "Lead"}, e)
+                    else:
+                        amount, currency = p.get("amount_minor"), p.get("currency")
+                        if type(amount) is not int or amount <= 0 or currency not in {"NGN", "USD"}:
+                            raise ValueError("Positive integer amount and qualified currency required")
+                        c = p["customer"]
+                        if not c.get("name"):
+                            raise ValueError("Customer identity required")
+                        customer_key = p["customer_ref"]
+                        customer_id = self.enqueue(s, customer_key, "finance.customer.upsert.v1", "D06", {"customer_name": c["name"], "customer_type": "Company" if c.get("organisation") else "Individual", "customer_group": "Insights Suppliers" if p["source_kind"] == "lead_assignment" else "Insights Subscribers", "territory": "All Territories"}, e)
+                        invoice = {"customer_ref": customer_key, "currency": currency, "company": self.company, "items": [{"item_code": KINDS[p["source_kind"]], "qty": 1, "rate": str(amount // 100) + "." + str(amount % 100).zfill(2), "cost_center": "TV-Insights-Pulzz - MCS"}], "cost_center": "TV-Insights-Pulzz - MCS", "source_invoice_reference": p.get("invoice_reference")}
+                        self.enqueue(s, p["external_ref"], "finance.invoice.create_draft.v1", "D06", invoice, e, customer_id)
+                    e.status = "routed"
+                    self.store.audit(s, "workflow:D06", "event.routed", e.event_id)
             except (ValueError, KeyError, TypeError) as exc:
                 e.status, e.error = "quarantined", str(exc)
                 self.store.put(s, "incident", "event:" + e.event_id, {"summary": str(exc), "status": "open", "severity": "high", "product_slug": e.product_slug})
@@ -140,7 +164,8 @@ class IntegrationWorker:
                         raise RuntimeError("Source eligibility lookup unavailable")
                     current = observed.json()
                     current = current.get("payload", current)
-                    if current.get("source_revision") != source["source_revision"] or not current.get("eligible_for_draft", current.get("source_kind") == "lead"):
+                    withdrawal = event.event_type == "commercial.source.withdrawn.v1"
+                    if current.get("source_revision") != source["source_revision"] or (bool(current.get("eligible_for_draft", current.get("source_kind") == "lead")) == withdrawal):
                         with self.store.transaction() as s:
                             row = s.get(Action, action_id, with_for_update=True)
                             if row.fence == fence:
@@ -163,7 +188,7 @@ class IntegrationWorker:
                     parent = s.get(Identity, identity.parent_id) if identity and identity.parent_id else identity
                     valid_identity = identity and identity.enabled and (identity.expires_at is None or identity.expires_at > time.time()) and parent and parent.enabled and parent.role == identity.role
                     allowed = DEPARTMENTS.get(identity.role, []) if identity else []
-                    if not valid_identity or ("*" not in allowed and row.department_id not in allowed) or a.get("revoked") or a.get("input_hash") != row.input_hash or a.get("expires_at", 0) <= time.time():
+                    if not valid_identity or not validate_provider_session(identity) or ("*" not in allowed and row.department_id not in allowed) or a.get("revoked") or a.get("input_hash") != row.input_hash or a.get("expires_at", 0) <= time.time():
                         row.status, row.error = "awaiting_approval", "Approval expired/revoked"
                         return True
                 body = dict(row.envelope)
@@ -181,7 +206,7 @@ class IntegrationWorker:
                         return True
                     body = {"schema_version": 1, "action_id": row.action_id, "revision_id": "1", "action_type": checked.action_type, "department_id": row.department_id, "product_slug": row.product_slug, "company": self.company, "idempotency_key": row.idempotency_key, "payload": checked.payload, "canonical_payload_hash": checked.canonical_payload_hash, "authorization_ref": checked.authorization_ref}
                 body["fencing_token"] = fence
-                if row.dependency_id:
+                if row.dependency_id and row.envelope["action_type"] != "crm.lead.suppress.v1":
                     parent = s.get(Action, row.dependency_id)
                     payload = dict(body["payload"])
                     payload.pop("customer_ref", None)
@@ -197,6 +222,12 @@ class IntegrationWorker:
                     return True
                 outcome = result.get("operation_outcome")
                 if outcome == "applied":
+                    if not result.get("provider_reference"):
+                        raise RuntimeError("Missing provider effect reference")
+                    if row.dependency_id and row.envelope["action_type"] != "crm.lead.suppress.v1":
+                        source = s.get(Event, ("tv-insights", row.event_id)).envelope["payload"]
+                        if result.get("amount_minor") != source["amount_minor"] or result.get("currency") != source["currency"]:
+                            raise RuntimeError("ERP source amount or currency differs")
                     row.status, row.receipt, row.error = "confirmed", result, None
                     row.callback_state = "pending" if row.event_id and (row.dependency_id or row.envelope["action_type"] == "crm.lead.upsert.v1") else "none"
                     row.reconcile_only = False
@@ -231,7 +262,7 @@ class IntegrationWorker:
                 return False
             e = s.get(Event, ("tv-insights", row.event_id))
             p, receipt = e.envelope["payload"], row.receipt
-            body = row.callback_body or {"schema_version": 1, "receipt_id": "receipt:" + digest({"event_id": row.event_id, "provider": receipt["provider_reference"], "state": receipt["document_state"], "sequence": row.document_sequence}), "event_id": row.event_id, "product_slug": "tv-insights", "company": self.company, "source_kind": p["source_kind"], "source_id": p["source_id"], "source_revision": p["source_revision"], "provider_reference": receipt["provider_reference"], "document_state": receipt["document_state"], "operation_outcome": "applied", "occurred_at": datetime.now(timezone.utc).isoformat(), "amount_minor": p.get("amount_minor", 0), "currency": p.get("currency"), "sequence": row.document_sequence}
+            body = row.callback_body or {"schema_version": 1, "receipt_id": "receipt:" + digest({"event_id": row.event_id, "provider": receipt["provider_reference"], "state": receipt["document_state"], "sequence": row.document_sequence}), "event_id": row.event_id, "product_slug": "tv-insights", "company": self.company, "source_kind": p["source_kind"], "source_id": p["source_id"], "source_revision": p["source_revision"], "provider_reference": receipt["provider_reference"], "document_state": receipt["document_state"], "operation_outcome": "applied", "occurred_at": datetime.now(timezone.utc).isoformat(), "amount_minor": receipt.get("amount_minor", 0), "currency": receipt.get("currency"), "sequence": row.document_sequence}
             row.callback_body, row.callback_state = body, "sending"
             row.lease_until, row.lease_owner = now + 90, self.owner
             action_id = row.action_id
@@ -271,11 +302,16 @@ class IntegrationWorker:
                 row = s.get(Action, action_id, with_for_update=True)
                 if result.get("provider_reference") != row.receipt.get("provider_reference"):
                     raise RuntimeError("ERP reference changed")
-                if result.get("document_state") != row.receipt.get("document_state"):
+                if result.get("amount_minor") != row.receipt.get("amount_minor") or result.get("currency") != row.receipt.get("currency"):
+                    raise RuntimeError("ERP financial projection changed")
+                if result.get("document_state") != row.receipt.get("document_state") or time.time() - row.updated_at >= 300:
                     row.receipt, row.callback_body = result, None
                     row.document_sequence += 1
                     row.callback_state, row.next_attempt = "pending", time.time()
                     row.updated_at = time.time()
+                incident = s.get(Record, ("incident", "reconciliation:" + action_id))
+                if incident:
+                    incident.body = {**incident.body, "status": "resolved", "rechecked": True, "resolved_at": time.time()}
         except Exception:
             with self.store.transaction() as s:
                 self.store.put(s, "incident", "reconciliation:" + action_id, {"status": "open", "severity": "high", "summary": "Previously confirmed ERP document could not be reconciled", "action_id": action_id})

@@ -78,74 +78,20 @@ def create_app(store: Store | None = None):
     def health(request: Request):
         try:
             with request.app.state.store.transaction() as s:
-                s.execute(text("SELECT 1"))
-            return {"status": "healthy", "service": "mcs-control-api", "version": "2.3.0", "commit": os.getenv("BUILD_SHA", "unknown")}
+                marker = s.get(Record, ("schema", "version"))
+                if not marker or marker.body.get("version") != 1:
+                    raise RuntimeError("Control schema migration required")
+            return {"status": "healthy", "service": "mcs-control-api", "version": "2.3.0", "commit": os.getenv("SOURCE_COMMIT", os.getenv("BUILD_SHA", "unknown")), "security_release": "console-auth-v1"}
         except Exception:
             return JSONResponse({"status": "unhealthy", "service": "mcs-control-api"}, status_code=503)
 
-    @app.post("/v1/session")
-    async def login(req: Login, request: Request, response: Response):
-        username = req.username.strip().lower()
-        if username == "administrator":
-            username = "Administrator"
-        st = request.app.state.store
-        key = digest({"username": username, "peer": request.client.host if request.client else "unknown"})
-        with st.transaction() as s:
-            account = s.get(Identity, "operator:" + username)
-            if not account or not account.enabled or account.role not in DEPARTMENTS:
-                raise HTTPException(401, "Account not enabled for command centre")
-            attempt = s.get(Record, ("login", key), with_for_update=True)
-            if attempt and attempt.body.get("count", 0) >= 8 and time.time() - attempt.updated_at < 900:
-                raise HTTPException(429, "Too many attempts; retry in 15 minutes")
-            count = attempt.body.get("count", 0) if attempt and time.time() - attempt.updated_at < 900 else 0
-            st.put(s, "login", key, {"count": count + 1})
-        erp = os.getenv("ERPNEXT_URL", "").rstrip("/")
-        if not erp:
-            raise HTTPException(503, "ERP identity provider unconfigured")
-        try:
-            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
-                auth = await client.post(erp + "/api/method/login", data={"usr": req.username, "pwd": req.password})
-                if auth.status_code != 200:
-                    raise HTTPException(401, "ERP sign-in failed")
-                who = await client.get(erp + "/api/method/frappe.auth.get_logged_user")
-                actual = who.json().get("message") if who.status_code == 200 else None
-                if not isinstance(actual, str) or actual.lower() != username.lower():
-                    raise HTTPException(401, "ERP identity could not be verified")
-                # OS issues a short-lived session; do not leave a second ERP session behind.
-                await client.get(erp + "/api/method/logout")
-        except httpx.HTTPError:
-            raise HTTPException(503, "ERP identity provider unavailable") from None
-        session_token = secrets.token_urlsafe(48)
-        with st.transaction() as s:
-            account = s.get(Identity, "operator:" + username)
-            if not account or not account.enabled:
-                raise HTTPException(401, "Account disabled")
-            s.add(Identity(identity_id="session:" + str(uuid.uuid4()), role=account.role, kind="session", parent_id=account.identity_id, token_hash=token_hash(session_token), expires_at=time.time() + 1800, scopes={}))
-            attempt = s.get(Record, ("login", key))
-            if attempt:
-                s.delete(attempt)
-            st.audit(s, account.identity_id, "session.created", username)
-            role = account.role
-        response.set_cookie("mcs_session", session_token, max_age=1800, httponly=True, secure=os.getenv("MCS_OS_ENV", "development") != "development", samesite="lax", path="/")
-        return {"role": role, "expires_in": 1800, "username": username}
-
-    @app.get("/v1/session")
-    def session(principal: Principal = Depends(authenticate)):
-        operator(principal)
-        return {"role": principal.role, "identity_id": principal.identity_id, "departments": DEPARTMENTS[principal.role]}
-
-    @app.delete("/v1/session")
-    def logout(request: Request, response: Response, principal: Principal = Depends(authenticate)):
-        with request.app.state.store.transaction() as s:
-            identity = s.get(Identity, principal.identity_id)
-            if identity and identity.kind == "session":
-                identity.enabled = False
-        response.delete_cookie("mcs_session", path="/")
-        return {"status": "signed_out"}
+    from apps.control_api.security import register_sessions
+    register_sessions(app)
 
     @app.get("/v1/products")
     async def products(request: Request, principal: Principal = Depends(authenticate)):
-        operator(principal)
+        if principal.kind != "read_only":
+            operator(principal)
         targets = [("tv-insights", os.getenv("PULZZ_URL", "").rstrip("/") + "/ready"), ("mcs-erp", os.getenv("MCS_ERP_GATEWAY_URL", "").rstrip("/") + "/healthz")]
         results = []
         async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
@@ -208,7 +154,7 @@ def create_app(store: Store | None = None):
                 engine.register_halt(halt.record_id)
             decision = engine.evaluate(envelope)
             # This API cannot import caller-supplied authorization references.
-            if decision.requires_approval:
+            if decision.requires_approval and decision.promoted_state != "rejected":
                 state = "awaiting_approval"
             else:
                 state = decision.promoted_state
@@ -262,6 +208,8 @@ def create_app(store: Store | None = None):
                 raise HTTPException(409, "Dispatched effects require separate reconciliation/compensation")
             if req.decision.startswith("approve") and row.status not in {"awaiting_approval", "content_approved"}:
                 raise HTTPException(409, "Only a policy-admissible pending approval can be granted")
+            if digest(row.envelope) != row.input_hash or digest(row.envelope["payload"]) != row.envelope["canonical_payload_hash"]:
+                raise HTTPException(409, "Action content changed; a new immutable revision is required")
             if row.effective_authority == "A4":
                 raise HTTPException(403, "Prohibited actions cannot be approved")
             if req.decision == "approve_content":
@@ -389,7 +337,7 @@ def create_app(store: Store | None = None):
         if principal.kind == "service" and not principal.scopes.get("read_health"):
             raise HTTPException(403, "Health scope required")
         from services.control.guardian import inspect
-        result = inspect(request.app.state.store)
+        result = inspect(request.app.state.store, repair=False)
         return JSONResponse(result, status_code=200 if result["status"] == "healthy" else 503)
 
     return app

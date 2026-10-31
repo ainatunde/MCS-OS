@@ -8,7 +8,7 @@ from services.control.store import Identity, configured_store, token_hash
 
 
 def provision(store):
-    operators = json.loads(os.environ.get("MCS_OPERATOR_ROLES", "{}"))
+    operators = json.loads(os.environ.get("MCS_ROLE_BINDINGS", "{}"))
     with store.transaction() as s:
         for username, role in operators.items():
             if role not in DEPARTMENTS:

@@ -37,6 +37,34 @@ services:
       - control-api
 
 
+  integration-worker:
+    build: .
+    command: ["python", "-m", "services.control.worker"]
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      control-api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.35"
+
+  integration-guardian:
+    build: .
+    command: ["python", "-m", "services.control.guardian"]
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      control-api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: "0.25"
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
