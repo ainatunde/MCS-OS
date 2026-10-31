@@ -53,3 +53,4 @@ apps/command-centre/out/
 Thumbs.db
 Desktop.ini
 .DS_Store
+/apps/command-centre/next-env.d.ts

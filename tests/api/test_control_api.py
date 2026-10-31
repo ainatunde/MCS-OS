@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from apps.control_api.main import create_app
 from contracts.actions.envelope import ActionEnvelope, canonical_payload_hash
-from services.control.guardian import inspect
+from services.control.guardian import inspect, observe_dependencies
 from services.control.security import signed_headers
 from services.control.store import Action, Base, Event, Identity, Record, Store, digest, token_hash
 from services.control.worker import IntegrationWorker
@@ -230,3 +230,33 @@ def test_unchanged_document_sends_periodic_freshness_receipt(store,monkeypatch):
     with store.transaction() as s:
         row=s.get(Action,"recovery")
         assert row.callback_state=="pending" and row.document_sequence==1
+
+
+def test_guardian_detects_idle_dependency_outage_and_rechecks_recovery(store,monkeypatch):
+    monkeypatch.setenv("MCS_OS_ENV","production")
+    monkeypatch.setenv("MCS_ERP_GATEWAY_URL","http://qa-erp")
+    monkeypatch.setenv("MCS_ERP_GATEWAY_TOKEN","fixture-gateway-token-32-characters-minimum")
+    monkeypatch.setenv("PULZZ_URL","http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN","fixture-receipt-token-32-characters-minimum")
+    failed=httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(503)))
+    observe_dependencies(store,failed)
+    checks=inspect(store)["checks"]
+    assert not checks["erp_authenticated_connectivity"] and not checks["pulzz_authenticated_connectivity"]
+    healthy=httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,json={"status":"healthy"})))
+    observe_dependencies(store,healthy)
+    assert inspect(store)["checks"]["erp_authenticated_connectivity"]
+    with store.transaction() as s:
+        assert s.get(Record,("incident","erp_authenticated_connectivity")).body["status"]=="resolved"
+
+
+def test_financial_projection_mismatch_is_unhealthy_until_verified_recovery(store,monkeypatch):
+    seed_action(store,status="confirmed",callback_state="delivered",reconcile_only=False,
+        receipt={"provider_reference":"INV-QA","document_state":"draft","amount_minor":10000,"currency":"NGN"})
+    worker=IntegrationWorker(store,object())
+    monkeypatch.setattr(worker,"_gateway",lambda **kwargs:{"operation_outcome":"applied","provider_reference":"INV-QA","document_state":"draft","amount_minor":10001,"currency":"NGN"})
+    assert worker.refresh_one()
+    assert not inspect(store)["checks"]["integration_reconciliation_integrity"]
+    with store.transaction() as s:s.get(Action,"recovery").next_attempt=0
+    monkeypatch.setattr(worker,"_gateway",lambda **kwargs:{"operation_outcome":"applied","provider_reference":"INV-QA","document_state":"draft","amount_minor":10000,"currency":"NGN"})
+    assert worker.refresh_one()
+    assert inspect(store)["checks"]["integration_reconciliation_integrity"]

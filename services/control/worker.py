@@ -68,10 +68,15 @@ class IntegrationWorker:
                                     old_event.envelope = {**old_event.envelope, "payload": {k: v for k, v in old_payload.items() if k not in {"customer", "lead_name", "contact_email", "contact_phone", "title", "organisation"}}}
                             if original.status in {"ready", "leased", "awaiting_approval"} and not original.reconcile_only:
                                 original.status = "cancelled"
+                                original.fence += 1
+                                original.lease_owner = None
                             else:
                                 target = self.enqueue(s, p["external_ref"] + ":suppress:" + p["source_revision"][:16], "crm.lead.suppress.v1", "D02", {"target_external_ref": p["external_ref"]}, e, original.action_id)
                                 s.flush()
                                 s.get(Action, target).document_sequence = original.document_sequence + 1
+                        elif original:
+                            self.store.put(s, "incident", "financial-source-withdrawn:" + e.event_id,
+                                {"status": "open", "severity": "high", "summary": "Product source withdrawn; reconcile the ERP document before any cancellation or credit", "action_id": original.action_id}, e.product_slug)
                         e.status = "routed"
                         return True
                     if e.event_type not in {"commercial.order.requested.v1", "commercial.plan.requested.v1", "crm.lead.inquiry.v1"}:
@@ -170,11 +175,17 @@ class IntegrationWorker:
                             row = s.get(Action, action_id, with_for_update=True)
                             if row.fence == fence:
                                 row.status, row.error = "cancelled", "Product source changed or became ineligible"
+                                row.fence += 1
+                                row.lease_owner = None
+                                if source.get("source_kind") == "lead":
+                                    row.envelope = {**row.envelope, "payload": {"lead_name": "Withdrawn Pulzz contact"}}
+                                    saved = s.get(Event, ("tv-insights", row.event_id))
+                                    saved.envelope = {**saved.envelope, "payload": {k: v for k, v in source.items() if k not in {"customer", "lead_name", "contact_email", "contact_phone", "title", "organisation"}}}
                                 self.store.put(s, "task", row.event_id, {"status": "cancelled", "department_id": row.department_id, "reason": row.error}, row.product_slug)
                         return True
             with self.store.transaction() as s:
                 row = s.get(Action, action_id, with_for_update=True)
-                if row.lease_owner != self.owner or row.fence != fence:
+                if row.status != "leased" or row.lease_owner != self.owner or row.fence != fence:
                     return True
                 if self.store.halted(s, row.product_slug):
                     row.status = "ready"
@@ -231,6 +242,9 @@ class IntegrationWorker:
                     row.status, row.receipt, row.error = "confirmed", result, None
                     row.callback_state = "pending" if row.event_id and (row.dependency_id or row.envelope["action_type"] == "crm.lead.upsert.v1") else "none"
                     row.reconcile_only = False
+                    if row.envelope["action_type"] == "crm.lead.suppress.v1" and row.dependency_id:
+                        original = s.get(Action, row.dependency_id, with_for_update=True)
+                        original.callback_state, original.callback_body = "none", None
                     self.store.audit(s, self.owner, "effect.confirmed", action_id, {"provider_reference": result.get("provider_reference"), "document_state": result.get("document_state")})
                 elif outcome == "not_applied" and reconciling:
                     row.status, row.error = "ready", "Provider positively confirmed no effect"
@@ -238,7 +252,7 @@ class IntegrationWorker:
                 else:
                     row.status, row.error = "outcome_unknown", "Provider outcome not confirmed"
                     row.reconcile_only, row.unknown_since = True, row.unknown_since or time.time()
-                row.updated_at, row.next_attempt = time.time(), time.time() + 30
+                row.updated_at, row.next_attempt = time.time(), time.time() + (0 if row.status == "confirmed" else 30)
         except Exception as exc:
             # Error text intentionally excludes remote bodies, credentials and source PII.
             with self.store.transaction() as s:
@@ -270,8 +284,9 @@ class IntegrationWorker:
         try:
             url = os.environ["PULZZ_URL"].rstrip("/") + "/api/integrations/mcs-os/receipts"
             response = self.client.post(url, json=body, headers=signed_headers(os.environ["MCS_PULZZ_RECEIPT_TOKEN"], os.environ["MCS_PULZZ_SIGNING_SECRET"], body))
-            accepted = response.status_code in {200, 201}
-        except (httpx.HTTPError, RuntimeError, KeyError):
+            answer = response.json() if response.status_code in {200, 201} else {}
+            accepted = answer.get("status") == "accepted" and answer.get("receipt_id") == body["receipt_id"]
+        except (httpx.HTTPError, RuntimeError, KeyError, ValueError, AttributeError):
             pass
         with self.store.transaction() as s:
             row = s.get(Action, action_id, with_for_update=True)
