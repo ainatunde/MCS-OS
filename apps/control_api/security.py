@@ -107,12 +107,21 @@ def register_sessions(app):
                     raise HTTPException(401, "ERP account identity mismatch")
         except httpx.HTTPError:
             raise HTTPException(503, "ERP identity service unavailable") from None
+        if hasattr(request.app.state, "store"):
+            from services.control.security import bind_session
+            bind_session(request, sid, email, role)
         response.set_cookie(COOKIE, sid, secure=enforced(), httponly=True, samesite="lax", path="/")
         response.headers["Cache-Control"] = "no-store"
         return {"role": role, "email": email}
 
     @app.get("/v1/session")
     async def current(request: Request, response: Response):
+        if hasattr(request.app.state, "store"):
+            from services.control.security import authenticate, operator
+            principal = await authenticate(request)
+            operator(principal)
+            response.headers["Cache-Control"] = "no-store"
+            return {"role": principal.role, "email": principal.scopes.get("email", principal.identity_id)}
         role = await verify_control_auth(request)
         if role == "read_only":
             raise HTTPException(403, "Individual session required")
@@ -131,6 +140,12 @@ def register_sessions(app):
                         raise HTTPException(503, "ERP sign-out could not be confirmed")
             except httpx.HTTPError:
                 raise HTTPException(503, "ERP identity service unavailable") from None
+            if hasattr(request.app.state, "store"):
+                from services.control.store import Identity, token_hash
+                with request.app.state.store.transaction() as session:
+                    identity = session.get(Identity, "session:" + token_hash(sid))
+                    if identity:
+                        identity.enabled = False
         response.delete_cookie(COOKIE, path="/")
         response.headers["Cache-Control"] = "no-store"
         return {"status": "signed_out"}

@@ -1,9 +1,26 @@
+x-control-env: &control-env
+  DATABASE_URL: ${DATABASE_URL:?set limited control runtime database URL}
+  MCS_OS_ENV: production
+  MCS_OS_AUTH_REQUIRED: "1"
+  MCS_ROLE_BINDINGS: ${MCS_ROLE_BINDINGS:?configure executive roles}
+  MCS_CORS_ORIGINS: ${MCS_CORS_ORIGINS:-https://command.mcsolutions.stream,https://os.mcsolutions.stream}
+  MCS_SESSION_ENCRYPTION_KEY: ${MCS_SESSION_ENCRYPTION_KEY:?configure encrypted ERP sessions}
+  MCS_CONTROL_API_TOKEN: ${MCS_CONTROL_API_TOKEN:-}
+  SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
+  ERPNEXT_URL: ${ERPNEXT_URL:?set ERP identity URL}
+  ERP_COMPANY: ${ERP_COMPANY:-Multimedia Cloud Solutions Ltd.}
+  PULZZ_URL: ${PULZZ_URL:-https://pulzz.stream}
+  MCS_PULZZ_SIGNING_SECRET: ${MCS_PULZZ_SIGNING_SECRET:?configure product signing key}
+  MCS_PULZZ_RECEIPT_TOKEN: ${MCS_PULZZ_RECEIPT_TOKEN:?configure product receiver token}
+  MCS_ERP_GATEWAY_URL: http://erp-gateway:8010
+  MCS_ERP_GATEWAY_TOKEN: ${MCS_ERP_GATEWAY_TOKEN:?configure private gateway identity}
+  MCS_ERP_SIGNING_SECRET: ${MCS_ERP_SIGNING_SECRET:?configure gateway signing key}
+
 services:
   control-api:
     build: .
     restart: unless-stopped
-    env_file:
-      - .env
+    environment: *control-env
     ports:
       - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8090}:8000"
     healthcheck:
@@ -36,6 +53,65 @@ services:
     depends_on:
       - control-api
 
+
+  erp-gateway:
+    image: ${MCS_ERP_GATEWAY_IMAGE:?build and pin the ERP gateway image}
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MCS_ERP_DATABASE_URL: ${MCS_ERP_DATABASE_URL:?set limited ERP journal database URL}
+      MCS_ERP_GATEWAY_TOKEN: ${MCS_ERP_GATEWAY_TOKEN}
+      MCS_ERP_SIGNING_SECRET: ${MCS_ERP_SIGNING_SECRET}
+      ERP_COMPANY: ${ERP_COMPANY:-Multimedia Cloud Solutions Ltd.}
+      ERPNEXT_URL: ${ERPNEXT_URL}
+      ERPNEXT_API_KEY: ${ERPNEXT_API_KEY:?configure restricted ERP service user}
+      ERPNEXT_API_SECRET: ${ERPNEXT_API_SECRET:?configure restricted ERP service user}
+      MCS_ERP_POSTING_POLICY_JSON: "{}"
+      SOURCE_COMMIT: ${MCS_ERP_SOURCE_COMMIT:-unknown}
+    expose: ["8010"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',8010),3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.35"
+
+  integration-worker:
+    build: .
+    command: ["python", "-m", "services.control.worker"]
+    restart: unless-stopped
+    environment: *control-env
+    depends_on:
+      control-api:
+        condition: service_healthy
+      erp-gateway:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.35"
+
+  integration-guardian:
+    build: .
+    command: ["python", "-m", "services.control.guardian"]
+    restart: unless-stopped
+    environment: *control-env
+    depends_on:
+      control-api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: "0.25"
 
   db:
     image: postgres:16-alpine

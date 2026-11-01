@@ -10,6 +10,16 @@ jobs:
   qualify-acceptance-gates:
     name: Qualify Acceptance Gates (L01-L20)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: os_control_test
+          POSTGRES_PASSWORD: integration-local-fixture
+        ports: ["55439:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
 
     steps:
       - name: Checkout Repository
@@ -23,7 +33,7 @@ jobs:
       - name: Install Test Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio pydantic fastapi httpx pyyaml sqlalchemy
+          pip install -r requirements.txt
 
       - name: Run Canonical CI Script (W01-W12 & L01-L20)
         env:

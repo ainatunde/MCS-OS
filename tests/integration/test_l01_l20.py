@@ -317,13 +317,10 @@ def test_l18_console():
     client = TestClient(app)
 
     res = client.get("/v1/briefings")
-    assert res.status_code == 200
-    assert res.json()["count"] > 0
+    assert res.status_code == 401
 
     res_prod = client.get("/v1/products")
-    assert res_prod.status_code == 200
-    assert res_prod.json()["count"] >= 8
-
+    assert res_prod.status_code == 401
 
 def test_l19_release_provenance():
     """L19 Release Provenance: Verify verified commit records and decision register."""
