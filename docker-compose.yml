@@ -21,6 +21,8 @@ services:
     build: .
     restart: unless-stopped
     environment: *control-env
+    volumes:
+      - /var/lib/mcs-backup:/var/lib/mcs-backup:ro   # status.json from deploy/backup
     ports:
       - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8090}:8000"
     healthcheck:
@@ -104,6 +106,8 @@ services:
     command: ["python", "-m", "services.control.guardian"]
     restart: unless-stopped
     environment: *control-env
+    volumes:
+      - /var/lib/mcs-backup:/var/lib/mcs-backup:ro   # status.json from deploy/backup
     depends_on:
       control-api:
         condition: service_healthy

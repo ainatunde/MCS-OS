@@ -1,4 +1,5 @@
 """Persistent control-plane failure detection and bounded pre-dispatch repair."""
+import json
 import logging
 import os
 import time
@@ -36,6 +37,19 @@ def observe_dependencies(store, client=None):
             client.close()
 
 
+BACKUP_MAX_AGE = 26 * 3600
+
+
+def backup_fresh(path, now):
+    """True when the host backup job (deploy/backup) last shipped an off-host copy within BACKUP_MAX_AGE."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            status = json.load(handle)
+        return now - float(status["last_success_at"]) < BACKUP_MAX_AGE
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def inspect(store, now=None, *, repair=True):
     now = time.time() if now is None else now
     checks = {}
@@ -59,6 +73,7 @@ def inspect(store, now=None, *, repair=True):
                 row = s.get(Record, ("dependency", name))
                 checks[name + "_authenticated_connectivity"] = bool(row and row.body.get("reachable") and now - row.updated_at < 120)
                 checks[name + "_workflow_consistency"] = bool(row and row.body.get("healthy") and now - row.updated_at < 120)
+            checks["offhost_backup_fresh"] = backup_fresh(os.getenv("MCS_BACKUP_STATUS_FILE", "/var/lib/mcs-backup/status.json"), now)
         if not repair:
             return {"status": "healthy" if all(checks.values()) else "degraded", "checks": checks, "observed_at": now}
         # Only unsent work is safely reclaimable without a provider lookup.
