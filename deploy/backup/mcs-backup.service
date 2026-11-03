@@ -1,0 +1,11 @@
+[Unit]
+Description=MCS encrypted off-host backup (Pulzz, MCS-OS, MCS-ERP)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mcs-backup.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=2h
