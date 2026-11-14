@@ -18,6 +18,9 @@ from services.control.security import DEPARTMENTS, signed_headers, validate_prov
 from services.control.store import Action, Event, Identity, Record, Store, configured_store, digest
 
 log = logging.getLogger(__name__)
+VOID = "finance.invoice.void_draft.v1"
+# Actions that act on an existing ERP document by reference: no customer rewrite, no source amount to compare.
+TARGETED = {"crm.lead.suppress.v1", VOID}
 KINDS = {"plan_request": "TV-Insights Subscription", "intel_report": "TV-Insights Intelligence Report", "lead_assignment": "TV-Insights Lead Delivery", "sponsorship": "TV-Insights Sponsorship"}
 
 
@@ -75,8 +78,21 @@ class IntegrationWorker:
                                 s.flush()
                                 s.get(Action, target).document_sequence = original.document_sequence + 1
                         elif original:
-                            self.store.put(s, "incident", "financial-source-withdrawn:" + e.event_id,
-                                {"status": "open", "severity": "high", "summary": "Product source withdrawn; reconcile the ERP document before any cancellation or credit", "action_id": original.action_id}, e.product_slug)
+                            incident = {"status": "open", "severity": "high", "summary": "Product source withdrawn; reconcile the ERP document before any cancellation or credit", "action_id": original.action_id}
+                            # The source revision changed, so the product would refuse further receipts for the old event.
+                            original.callback_state, original.callback_body = "none", None
+                            if (original.status == "confirmed" and original.envelope["action_type"] == "finance.invoice.create_draft.v1"
+                                    and (original.receipt or {}).get("document_state") == "draft"):
+                                # A draft carries no ledger effect: offer its removal, but only on an individual finance approval.
+                                void_id = self.enqueue(s, p["external_ref"] + ":void:" + p["source_revision"][:16], VOID, "D06", {"target_external_ref": p["external_ref"]}, e, original.action_id)
+                                s.flush()
+                                void = s.get(Action, void_id)
+                                if void.status == "ready" and void.attempts == 0 and void.approval is None:
+                                    void.status, void.effective_authority = "awaiting_approval", "A3"
+                                    void.document_sequence = original.document_sequence + 1
+                                    void.fence = original.fence
+                                incident = {**incident, "summary": "Product source voided; approve or revoke removal of the draft ERP invoice", "void_action_id": void_id}
+                            self.store.put(s, "incident", "financial-source-withdrawn:" + e.event_id, incident, e.product_slug)
                         e.status = "routed"
                         return True
                     if e.event_type not in {"commercial.order.requested.v1", "commercial.plan.requested.v1", "crm.lead.inquiry.v1"}:
@@ -217,7 +233,7 @@ class IntegrationWorker:
                         return True
                     body = {"schema_version": 1, "action_id": row.action_id, "revision_id": "1", "action_type": checked.action_type, "department_id": row.department_id, "product_slug": row.product_slug, "company": self.company, "idempotency_key": row.idempotency_key, "payload": checked.payload, "canonical_payload_hash": checked.canonical_payload_hash, "authorization_ref": checked.authorization_ref}
                 body["fencing_token"] = fence
-                if row.dependency_id and row.envelope["action_type"] != "crm.lead.suppress.v1":
+                if row.dependency_id and row.envelope["action_type"] not in TARGETED:
                     parent = s.get(Action, row.dependency_id)
                     payload = dict(body["payload"])
                     payload.pop("customer_ref", None)
@@ -235,7 +251,7 @@ class IntegrationWorker:
                 if outcome == "applied":
                     if not result.get("provider_reference"):
                         raise RuntimeError("Missing provider effect reference")
-                    if row.dependency_id and row.envelope["action_type"] != "crm.lead.suppress.v1":
+                    if row.dependency_id and row.envelope["action_type"] not in TARGETED:
                         source = s.get(Event, ("tv-insights", row.event_id)).envelope["payload"]
                         if result.get("amount_minor") != source["amount_minor"] or result.get("currency") != source["currency"]:
                             raise RuntimeError("ERP source amount or currency differs")
@@ -245,7 +261,25 @@ class IntegrationWorker:
                     if row.envelope["action_type"] == "crm.lead.suppress.v1" and row.dependency_id:
                         original = s.get(Action, row.dependency_id, with_for_update=True)
                         original.callback_state, original.callback_body = "none", None
+                    if row.envelope["action_type"] == VOID and row.dependency_id:
+                        if result.get("document_state") != "voided":
+                            raise RuntimeError("ERP void effect not established")
+                        # The draft is gone: retire the original so it is never refreshed or re-sent, and close the review.
+                        original = s.get(Action, row.dependency_id, with_for_update=True)
+                        original.status, original.callback_state, original.callback_body = "voided", "none", None
+                        original.receipt = {**(original.receipt or {}), "document_state": "voided"}
+                        original.updated_at = time.time()
+                        for name in ("financial-source-withdrawn:" + (row.event_id or ""), "reconciliation:" + original.action_id):
+                            incident = s.get(Record, ("incident", name))
+                            if incident and incident.body.get("status") == "open":
+                                incident.body = {**incident.body, "status": "resolved", "rechecked": True, "resolved_at": time.time(), "resolution": "draft ERP invoice voided on finance approval"}
+                        self.store.audit(s, self.owner, "effect.voided", original.action_id, {"provider_reference": result.get("provider_reference"), "void_action_id": action_id, "approved_by": (row.approval or {}).get("actor_id")})
                     self.store.audit(s, self.owner, "effect.confirmed", action_id, {"provider_reference": result.get("provider_reference"), "document_state": result.get("document_state")})
+                elif outcome == "not_applied" and row.envelope["action_type"] == VOID and result.get("provider_reference"):
+                    # A definite refusal: the invoice exists but is no longer a draft. Retrying cannot change that.
+                    row.status = "blocked"
+                    row.error = "ERP invoice is " + str(result.get("document_state") or "not a draft")[:24] + ", not a draft; finance must credit or cancel it in ERPNext"
+                    row.reconcile_only, row.unknown_since = False, None
                 elif outcome == "not_applied" and reconciling:
                     row.status, row.error = "ready", "Provider positively confirmed no effect"
                     row.reconcile_only, row.unknown_since = False, None
@@ -293,6 +327,9 @@ class IntegrationWorker:
             if row.lease_owner != self.owner or row.callback_body != body:
                 return True
             row.callback_state = "delivered" if accepted else "pending"
+            if accepted and row.envelope["action_type"] == VOID:
+                # Nothing remains in ERP to keep fresh: the void is finished business, not a document to re-check.
+                row.status = "settled"
             row.error = None if accepted else "Product receipt not accepted; retry pending"
             row.updated_at, row.next_attempt = time.time(), time.time() + 60
             if accepted:
