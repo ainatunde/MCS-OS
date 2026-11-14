@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly MCS off-host backup
+
+[Timer]
+# 02:30 WAT
+OnCalendar=*-*-* 01:30:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -350,34 +350,9 @@ else
   fi
 fi
 
-# ---------- 8. Automated Daily Backups ----------
-log "Configuring automated daily backups"
-cat > /opt/mcs/backup.sh <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-BACKUP_DIR=/opt/mcs/backups
-mkdir -p "\$BACKUP_DIR"
-DATE=\$(date +%F_%H%M%S)
-
-# 1. ERPNext Site Backup
-ERP_C=\$(docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" | grep -E "(mcs-erp|$APP_ERP_UUID)" | head -n1 || true)
-if [[ -n \$ERP_C ]]; then
-  docker exec "\$ERP_C" bench --site "$ERP_HOSTNAME" backup --with-files || true
-fi
-
-# 2. MCS-OS PostgreSQL Backup
-OS_DB_C=\$(docker ps --filter "name=db" --filter "status=running" --format "{{.Names}}" | grep -E "(mcs-os|$APP_OS_UUID)" | head -n1 || true)
-if [[ -n \$OS_DB_C ]]; then
-  docker exec "\$OS_DB_C" pg_dump -U mcs_policy_role mcs_os | gzip > "\$BACKUP_DIR/mcs_os_\$DATE.sql.gz" || true
-fi
-
-# Retain backups for 14 days
-find "\$BACKUP_DIR" -type f -name "*.gz" -mtime +14 -delete
-EOF
-chmod 700 /opt/mcs/backup.sh
-
-# Install cron symlink
-ln -sf /opt/mcs/backup.sh /etc/cron.daily/mcs-backup
+# ---------- 8. Backups ----------
+# Encrypted off-host backups are installed separately: see deploy/backup/README.md (install.sh).
+# This script no longer installs the old on-host-only /etc/cron.daily/mcs-backup job.
 
 # ---------- 9. Public Health Checks ----------
 log "Public Health Checks"
