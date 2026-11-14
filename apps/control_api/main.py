@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from contracts.actions.envelope import ActionEnvelope
 from services.control.security import DEPARTMENTS, Principal, authenticate, operator, service_event
 from services.control.store import Action, Event, Identity, Record, Store, canonical, configured_store, digest, token_hash
+from services.control.build_info import current_commit
 from services.policy.engine import PolicyEngine
 
 
@@ -81,7 +82,7 @@ def create_app(store: Store | None = None):
                 marker = s.get(Record, ("schema", "version"))
                 if not marker or marker.body.get("version") != 1:
                     raise RuntimeError("Control schema migration required")
-            return {"status": "healthy", "service": "mcs-control-api", "version": "2.3.0", "commit": os.getenv("SOURCE_COMMIT", os.getenv("BUILD_SHA", "unknown")), "security_release": "console-auth-v1"}
+            return {"status": "healthy", "service": "mcs-control-api", "version": "2.3.0", "commit": current_commit(), "security_release": "console-auth-v1"}
         except Exception:
             return JSONResponse({"status": "unhealthy", "service": "mcs-control-api"}, status_code=503)
 
