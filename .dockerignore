@@ -1,4 +1,10 @@
-.git
+# Keep only what names the built commit (services/control/build_info.py); no history or objects.
+.git/*
+!.git/HEAD
+!.git/packed-refs
+!.git/refs
+.git/refs/*
+!.git/refs/heads
 .env
 .env.*
 **/*.secrets.env
