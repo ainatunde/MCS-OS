@@ -99,3 +99,12 @@ Once the deployment completes:
    ```
 6. **Save Keys to MCS-OS**:
    Update `ERPNEXT_API_KEY` and `ERPNEXT_API_SECRET` in Coolify under the `mcs-os` environment variables.
+
+## 5. Continuous Deployment
+
+The OS application in Coolify (`ddurgt39q2ypwz6761bdypib`) deploys `main` at `HEAD`. A merge to `main` deploys by itself:
+
+- GitHub repository webhook (push events) to `https://coolify.pulzz.stream/webhooks/source/github/events/manual`. Its secret is the application's `manual_webhook_secret_github` in Coolify; change both together.
+- Without that webhook Coolify never hears about a push, even with auto-deploy switched on. Deploy by hand with `POST /api/v1/deploy?uuid=ddurgt39q2ypwz6761bdypib`.
+- "Include source commit in build" is on, so `/healthz` reports the deployed commit. Check it after a deploy.
+- The ERP gateway is not built by Coolify: it runs the pinned image `MCS_ERP_GATEWAY_IMAGE`, built on the host from an MCS-ERP commit. Change `MCS_ERP_GATEWAY_IMAGE` and `MCS_ERP_SOURCE_COMMIT` together, then deploy.
