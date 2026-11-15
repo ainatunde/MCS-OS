@@ -19,8 +19,17 @@ from services.control.store import Action, Event, Identity, Record, Store, confi
 
 log = logging.getLogger(__name__)
 VOID = "finance.invoice.void_draft.v1"
+POST = "finance.invoice.submit_a2.v1"
 # Actions that act on an existing ERP document by reference: no customer rewrite, no source amount to compare.
-TARGETED = {"crm.lead.suppress.v1", VOID}
+TARGETED = {"crm.lead.suppress.v1", VOID, POST}
+
+
+def auto_post_limit_minor() -> int:
+    """The owner's standing limit for posting an NGN Pulzz invoice without a person (0 = never). Minor units."""
+    try:
+        return max(0, int(float(os.getenv("MCS_INVOICE_AUTO_POST_LIMIT_NGN", "0")) * 100))
+    except ValueError:
+        return 0
 KINDS = {"plan_request": "TV-Insights Subscription", "intel_report": "TV-Insights Intelligence Report", "lead_assignment": "TV-Insights Lead Delivery", "sponsorship": "TV-Insights Sponsorship"}
 
 
@@ -257,6 +266,27 @@ class IntegrationWorker:
                             raise RuntimeError("ERP source amount or currency differs")
                     row.status, row.receipt, row.error = "confirmed", result, None
                     row.callback_state = "pending" if row.event_id and (row.dependency_id or row.envelope["action_type"] == "crm.lead.upsert.v1") else "none"
+                    if row.envelope["action_type"] == POST:
+                        # The invoice's own action reports the new state to the product on its next refresh, in sequence.
+                        row.callback_state = "none"
+                        original = s.get(Action, row.dependency_id, with_for_update=True) if row.dependency_id else None
+                        if original is not None:
+                            original.next_attempt = 0
+                    elif (row.envelope["action_type"] == "finance.invoice.create_draft.v1" and result.get("document_state") == "draft"
+                            and result.get("currency") == "NGN" and 0 < int(result.get("amount_minor") or 0) <= auto_post_limit_minor()
+                            and row.event_id):
+                        # Within the owner's standing limit: post the draft without a person. Above it, the draft waits
+                        # in ERPNext for finance and is listed in the morning briefing.
+                        event = s.get(Event, ("tv-insights", row.event_id))
+                        if event is not None:
+                            post_id = self.enqueue(s, row.idempotency_key + ":post", POST, "D06",
+                                                   {"target_external_ref": row.idempotency_key}, event, row.action_id)
+                            s.flush()
+                            post = s.get(Action, post_id)
+                            if post.attempts == 0:
+                                post.fence = max(post.fence, row.fence)
+                            self.store.audit(s, "workflow:D06", "invoice.auto_post.proposed", post_id,
+                                             {"amount_minor": result.get("amount_minor"), "limit_minor": auto_post_limit_minor()})
                     row.reconcile_only = False
                     if row.envelope["action_type"] == "crm.lead.suppress.v1" and row.dependency_id:
                         original = s.get(Action, row.dependency_id, with_for_update=True)

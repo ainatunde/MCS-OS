@@ -398,3 +398,74 @@ def test_withdrawal_of_a_posted_invoice_offers_no_void(store):
         assert void is None and original.status=="confirmed"
         incident=s.get(Record,("incident","financial-source-withdrawn:plan-void")).body
         assert incident["status"]=="open" and "void_action_id" not in incident
+
+
+POST_KIND = "finance.invoice.submit_a2.v1"
+
+
+def confirm_draft(store, monkeypatch, amount_minor, currency="NGN", limit="100000"):
+    """Route a plan order, then let the worker confirm its draft invoice with the given amount."""
+    monkeypatch.setenv("MCS_INVOICE_AUTO_POST_LIMIT_NGN", limit)
+    monkeypatch.setenv("PULZZ_URL", "http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN", "fixture-receipt-token-32-characters-minimum")
+    p = {"source_kind": "plan_request", "source_id": 7, "source_revision": "r1", "external_ref": "tvinsights:plan_request:7",
+         "eligible_for_draft": True, "customer_ref": "tvinsights:user:7", "customer": {"name": "Fixture subscriber"},
+         "amount_minor": amount_minor, "currency": currency}
+    with store.transaction() as s:
+        s.add(Event(producer="tv-insights", event_id="plan-7", event_type="commercial.plan.requested.v1", product_slug="tv-insights",
+                    content_hash=digest(p), envelope={"payload": p}))
+    worker = IntegrationWorker(store, httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"payload": p}))))
+    assert worker.route_one()
+    with store.transaction() as s:
+        customer = next(a for a in s.scalars(select(Action)) if not a.dependency_id)
+        customer.status, customer.receipt = "confirmed", {"provider_reference": "CUST-7", "document_state": "active"}
+    sent = []
+    def gateway(**kwargs):
+        sent.append(kwargs)
+        body = kwargs.get("body") or {}
+        if body.get("action_type") == POST_KIND:
+            return {"operation_outcome": "applied", "provider_reference": "INV-7", "document_state": "submitted",
+                    "amount_minor": amount_minor, "currency": currency}
+        return {"operation_outcome": "applied", "provider_reference": "INV-7", "document_state": "draft",
+                "amount_minor": amount_minor, "currency": currency}
+    monkeypatch.setattr(worker, "_gateway", gateway)
+    assert worker.execute_one()
+    return worker, sent
+
+
+def actions_by_kind(store):
+    with store.transaction() as s:
+        return {a.envelope["action_type"]: (a.status, a.callback_state, a.fence, a.dependency_id, a.envelope["payload"])
+                for a in s.scalars(select(Action))}
+
+
+def test_a_pulzz_invoice_within_the_owner_limit_is_posted_without_a_person(store, monkeypatch):
+    worker, sent = confirm_draft(store, monkeypatch, 5_000_000)                    # NGN 50,000
+    rows = actions_by_kind(store)
+    status, callback, fence, dependency, payload = rows[POST_KIND]
+    assert status == "ready" and payload == {"target_external_ref": "tvinsights:plan_request:7"}
+    assert fence == rows["finance.invoice.create_draft.v1"][2]                      # the gateway's target fence moves forward
+    assert worker.execute_one()
+    body = sent[-1]["body"]
+    assert body["action_type"] == POST_KIND and body["authorization_ref"] == "standing:pulzz-integration:v1"
+    assert body["fencing_token"] > rows["finance.invoice.create_draft.v1"][2]
+    rows = actions_by_kind(store)
+    assert rows[POST_KIND][0] == "confirmed" and rows[POST_KIND][1] == "none"       # no out-of-sequence product receipt
+    with store.transaction() as s:
+        draft = next(a for a in s.scalars(select(Action)) if a.envelope["action_type"] == "finance.invoice.create_draft.v1")
+        assert draft.next_attempt == 0                                              # its refresh reports "submitted" next
+
+
+@pytest.mark.parametrize("amount,currency,limit", [
+    (10_000_001, "NGN", "100000"),      # NGN 100,000.01: above the limit
+    (5_000, "USD", "100000"),           # the owner set an NGN limit only
+    (5_000_000, "NGN", "0"),            # no standing limit configured
+])
+def test_invoices_outside_the_standing_limit_wait_for_finance(store, monkeypatch, amount, currency, limit):
+    confirm_draft(store, monkeypatch, amount, currency=currency, limit=limit)
+    assert POST_KIND not in actions_by_kind(store)
+
+
+def test_exactly_the_limit_is_posted(store, monkeypatch):
+    confirm_draft(store, monkeypatch, 10_000_000)
+    assert POST_KIND in actions_by_kind(store)

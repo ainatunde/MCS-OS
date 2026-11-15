@@ -15,6 +15,7 @@ x-control-env: &control-env
   MCS_ERP_GATEWAY_URL: http://erp-gateway:8010
   MCS_ERP_GATEWAY_TOKEN: ${MCS_ERP_GATEWAY_TOKEN:?configure private gateway identity}
   MCS_ERP_SIGNING_SECRET: ${MCS_ERP_SIGNING_SECRET:?configure gateway signing key}
+  MCS_INVOICE_AUTO_POST_LIMIT_NGN: ${MCS_INVOICE_AUTO_POST_LIMIT_NGN:-0}
 
 services:
   control-api:
@@ -68,7 +69,8 @@ services:
       ERPNEXT_URL: ${ERPNEXT_URL}
       ERPNEXT_API_KEY: ${ERPNEXT_API_KEY:?configure restricted ERP service user}
       ERPNEXT_API_SECRET: ${ERPNEXT_API_SECRET:?configure restricted ERP service user}
-      MCS_ERP_POSTING_POLICY_JSON: "{}"
+      # Standing posting authority (owner, 2026-11-15): Pulzz invoices up to NGN 100,000. Empty = posting denied.
+      MCS_ERP_POSTING_POLICY_JSON: ${MCS_ERP_POSTING_POLICY_JSON:-null}
       SOURCE_COMMIT: ${MCS_ERP_SOURCE_COMMIT:-unknown}
     expose: ["8010"]
     healthcheck:
