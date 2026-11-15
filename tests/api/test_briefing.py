@@ -139,3 +139,15 @@ def test_guardian_reports_a_missed_or_stalled_briefing(store):
     with store.transaction() as s:
         s.get(Record, ("heartbeat", "briefing")).updated_at = now - 600
     assert briefing_current(store, now) is False                                       # the sender stopped
+
+
+def test_erpnext_operations_line_and_no_self_reference(store):
+    with store.transaction() as s:
+        store.put(s, "heartbeat", "integration-guardian", {"checks": {"morning_briefing_sent": False, "erp_operations": True}})
+        store.put(s, "dependency", "erp_ops", {"reachable": True, "healthy": True, "scheduler_last_run_minutes": 3,
+                                               "jobs_failed_24h": 1, "email_errors_24h": 0, "email_stuck": 0, "errors_24h": 2})
+    data = briefing.gather(store, client(), at("2026-11-16", 7, 0))
+    _, text, _ = render(data)
+    assert "morning_briefing_sent" not in text
+    assert "ERPNext: scheduler ran 3 min ago, 1 failed jobs, 0 email errors, 0 emails stuck, 2 errors logged" in text
+    assert "Checks: 2 of 2 passing" in text

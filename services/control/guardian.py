@@ -32,6 +32,20 @@ def observe_dependencies(store, client=None):
                 pass
             with store.transaction() as s:
                 store.put(s, "dependency", name, {"healthy": good, "reachable": reachable, "observed_at": time.time()})
+        # ERPNext's own operations (scheduler, background jobs, outgoing email), through the gateway.
+        ops = {"healthy": False, "reachable": False}
+        try:
+            response = client.get(os.environ["MCS_ERP_GATEWAY_URL"].rstrip("/") + "/v1/erp-health",
+                                  headers={"Authorization": "Bearer " + os.environ["MCS_ERP_GATEWAY_TOKEN"]})
+            body = response.json()
+            if response.status_code == 200 and isinstance(body, dict):
+                ops = {k: body.get(k) for k in ("scheduler_last_run_minutes", "jobs_failed_24h", "email_errors_24h",
+                                                "email_stuck", "errors_24h")}
+                ops.update(reachable=True, healthy=body.get("status") == "healthy")
+        except (KeyError, ValueError, httpx.HTTPError):
+            pass
+        with store.transaction() as s:
+            store.put(s, "dependency", "erp_ops", {**ops, "observed_at": time.time()})
     finally:
         if owned:
             client.close()
@@ -76,6 +90,8 @@ def inspect(store, now=None, *, repair=True):
             checks["offhost_backup_fresh"] = backup_fresh(os.getenv("MCS_BACKUP_STATUS_FILE", "/var/lib/mcs-backup/status.json"), now)
             from services.control.briefing import briefing_current
             checks["morning_briefing_sent"] = briefing_current(store, now)
+            ops = s.get(Record, ("dependency", "erp_ops"))
+            checks["erp_operations"] = bool(ops and ops.body.get("healthy") and now - ops.updated_at < 120)
         if not repair:
             return {"status": "healthy" if all(checks.values()) else "degraded", "checks": checks, "observed_at": now}
         # Only unsent work is safely reclaimable without a provider lookup.

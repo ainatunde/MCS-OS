@@ -80,7 +80,9 @@ def gather(store: Store, client: httpx.Client, now: float) -> dict:
         data["os"]["guardian_age"] = round(now - guardian.updated_at) if guardian else None
         data["os"]["findings"] = [{"check": r.record_id, "summary": (r.body.get("summary") or "")[:160]}
                                   for r in s.scalars(select(Record).where(Record.namespace == "incident"))
-                                  if r.body.get("status") == "open"]
+                                  if r.body.get("status") == "open" and r.record_id != "morning_briefing_sent"]
+        ops = s.get(Record, ("dependency", "erp_ops"))
+        data["erp_ops"] = dict(ops.body) if ops and ops.body.get("reachable") else None
     data["backup"] = _backup(now)
     return data
 
@@ -124,7 +126,8 @@ def attention(data: dict) -> list[str]:
     for b in os_.get("blocked", []):
         items.append(f"Action blocked: {b['type']}: {b['error']}")
     for name in os_.get("checks_failing", []):
-        items.append(f"OS check failing: {name}")
+        if name != "morning_briefing_sent":          # true until this very email is sent
+            items.append(f"OS check failing: {name}")
     erp = data.get("erp") or {}
     rec = erp.get("receivables") or {}
     if rec.get("overdue_invoices"):
@@ -168,8 +171,15 @@ def sections(data: dict) -> list[tuple[str, list[str]]]:
         ]))
     os_ = data.get("os", {})
     done = os_.get("done") or {}
+    ops = data.get("erp_ops")
+    erp_line = ("ERPNext: " + (f"scheduler ran {ops.get('scheduler_last_run_minutes')} min ago" if ops.get("scheduler_last_run_minutes") is not None
+                               else "scheduler has not run") +
+                f", {ops.get('jobs_failed_24h', 0)} failed jobs, {ops.get('email_errors_24h', 0)} email errors,"
+                f" {ops.get('email_stuck', 0)} emails stuck, {ops.get('errors_24h', 0)} errors logged") if ops else "ERPNext operations: not observed"
+    failing = [n for n in os_.get("checks_failing", []) if n != "morning_briefing_sent"]
     out.append(("Operations (MCS OS)", [
-        f"Checks: {os_.get('checks_total', 0) - len(os_.get('checks_failing', []))} of {os_.get('checks_total', 0)} passing",
+        f"Checks: {os_.get('checks_total', 0) - len(failing)} of {os_.get('checks_total', 0)} passing",
+        erp_line,
         "Done in the last day: " + (", ".join(f"{n} × {t}" for t, n in sorted(done.items())) or "nothing"),
         f"Waiting for you: {len(os_.get('waiting', []))}; open findings: {len(os_.get('findings', []))}",
     ]))

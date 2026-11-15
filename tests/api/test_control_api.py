@@ -469,3 +469,27 @@ def test_invoices_outside_the_standing_limit_wait_for_finance(store, monkeypatch
 def test_exactly_the_limit_is_posted(store, monkeypatch):
     confirm_draft(store, monkeypatch, 10_000_000)
     assert POST_KIND in actions_by_kind(store)
+
+
+def test_guardian_watches_erpnext_scheduler_and_email(store, monkeypatch):
+    monkeypatch.setenv("MCS_OS_ENV", "production")
+    monkeypatch.setenv("MCS_ERP_GATEWAY_URL", "http://qa-erp")
+    monkeypatch.setenv("MCS_ERP_GATEWAY_TOKEN", "fixture-gateway-token-32-characters-minimum")
+    monkeypatch.setenv("PULZZ_URL", "http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN", "fixture-receipt-token-32-characters-minimum")
+    def erp(state):
+        def handler(request):
+            if request.url.path == "/v1/erp-health":
+                return httpx.Response(200, json={"status": state, "scheduler_last_run_minutes": 95 if state != "healthy" else 2,
+                                                  "jobs_failed_24h": 0, "email_errors_24h": 0, "email_stuck": 0, "errors_24h": 0})
+            return httpx.Response(200, json={"status": "healthy"})
+        return httpx.Client(transport=httpx.MockTransport(handler))
+    observe_dependencies(store, erp("degraded"))
+    assert inspect(store)["checks"]["erp_operations"] is False
+    with store.transaction() as s:
+        assert s.get(Record, ("incident", "erp_operations")).body["status"] == "open"
+        assert s.get(Record, ("dependency", "erp_ops")).body["scheduler_last_run_minutes"] == 95
+    observe_dependencies(store, erp("healthy"))
+    assert inspect(store)["checks"]["erp_operations"] is True
+    with store.transaction() as s:
+        assert s.get(Record, ("incident", "erp_operations")).body["status"] == "resolved"
