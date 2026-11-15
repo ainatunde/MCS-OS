@@ -45,3 +45,24 @@ financial effects.
 Qualification uses real PostgreSQL, real HTTP between the three services and a
 separate real Frappe/ERPNext QA site. Company-wide eleven-department readiness
 remains false; this release does not qualify unrelated portfolio workflows.
+
+## Voiding an order
+
+A product source that is voided (a test order, or one cancelled before billing)
+arrives as `commercial.source.withdrawn.v1`. The OS stops sending receipts for
+the old event and opens the `financial-source-withdrawn` finding. When the ERP
+document is still a draft Sales Invoice, the OS also proposes
+`finance.invoice.void_draft.v1`, held at `awaiting_approval` with authority A3.
+Nothing is sent until an executive with the finance mandate approves it in the
+command centre; the ERP session behind that approval is revalidated at dispatch.
+
+On approval the worker rechecks the source, asks the ERP gateway to delete the
+draft, then marks the original action `voided`, resolves the finding, returns a
+`voided` receipt to the product and marks the void action `settled`. Neither
+action is refreshed or re-sent afterwards. "Keep invoice" cancels the proposal
+and leaves the finding open for finance.
+
+A posted or cancelled invoice is never voided. No void is proposed for one, and
+if it is posted between proposal and dispatch the gateway refuses: the action
+becomes `blocked` with the document's real state, and finance credits or
+cancels it in ERPNext.

@@ -279,3 +279,122 @@ def test_cancelled_claim_cannot_dispatch_after_a_stale_source_read(store,monkeyp
     assert worker.route_one() and worker.execute_one()
     assert calls==[]
     with store.transaction() as s:assert s.scalar(select(Action)).status=="cancelled"
+
+
+VOID_KIND="finance.invoice.void_draft.v1"
+
+
+def seed_voidable(store, state="draft"):
+    """A plan whose draft invoice ERP confirmed, then the withdrawal of that plan by the product."""
+    p={"source_kind":"plan_request","source_id":1,"source_revision":"r1","external_ref":"tvinsights:plan_request:1","eligible_for_draft":True,
+       "customer_ref":"tvinsights:user:1","customer":{"name":"Fixture subscriber"},"amount_minor":5000000,"currency":"NGN"}
+    withdrawal={"source_kind":"plan_request","source_id":1,"source_revision":"r2","external_ref":"tvinsights:plan_request:1","eligible_for_draft":False}
+    with store.transaction() as s:
+        s.add(Event(producer="tv-insights",event_id="plan-create",event_type="commercial.plan.requested.v1",product_slug="tv-insights",content_hash=digest(p),envelope={"payload":p}))
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(500))))
+    assert worker.route_one()
+    with store.transaction() as s:
+        for row in s.scalars(select(Action)):
+            invoice=bool(row.dependency_id)
+            row.status,row.fence=("confirmed",3)
+            row.callback_state="delivered" if invoice else "none"
+            row.receipt={"provider_reference":"INV-1","document_state":state,"amount_minor":5000000,"currency":"NGN"} if invoice else {"provider_reference":"CUST-1","document_state":"active"}
+            if invoice:
+                row.document_sequence=4
+        s.add(Event(producer="tv-insights",event_id="plan-void",event_type="commercial.source.withdrawn.v1",product_slug="tv-insights",content_hash=digest(withdrawal),envelope={"payload":withdrawal}))
+    assert worker.route_one()
+    return withdrawal
+
+
+def void_rows(s):
+    rows=s.scalars(select(Action)).all()
+    return (next((r for r in rows if r.envelope["action_type"]==VOID_KIND),None),
+            next(r for r in rows if r.envelope["action_type"]=="finance.invoice.create_draft.v1"))
+
+
+def test_voided_plan_offers_draft_removal_only_on_finance_approval(store,monkeypatch):
+    import json
+    monkeypatch.setenv("PULZZ_URL","http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN","fixture-receipt-token-32-characters-minimum")
+    withdrawal=seed_voidable(store)
+    with store.transaction() as s:
+        void,original=void_rows(s)
+        void_id=void.action_id
+        assert void.status=="awaiting_approval" and void.effective_authority=="A3" and void.dependency_id==original.action_id
+        assert void.envelope["payload"]=={"target_external_ref":"tvinsights:plan_request:1"}
+        assert original.status=="confirmed" and original.callback_state=="none"
+        incident=s.get(Record,("incident","financial-source-withdrawn:plan-void")).body
+        assert incident["status"]=="open" and incident["void_action_id"]==void_id
+    assert not inspect(store)["checks"]["integration_source_withdrawals"]
+    sent,receipts=[],[]
+    def product(request):
+        if request.method=="GET":
+            return httpx.Response(200,json={"payload":withdrawal})
+        body=json.loads(request.content);receipts.append(body)
+        return httpx.Response(200,json={"status":"accepted","receipt_id":body["receipt_id"]})
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(product)))
+    def gateway(**kwargs):
+        sent.append(kwargs)
+        return {"operation_outcome":"applied","provider_reference":"INV-1","document_state":"voided","amount_minor":0,"currency":None}
+    monkeypatch.setattr(worker,"_gateway",gateway)
+    # Nothing is dispatched, refreshed or re-sent while the approval is outstanding.
+    assert not worker.execute_one() and not worker.refresh_one() and not worker.deliver_one() and sent==[]
+    with TestClient(create_app(store)) as c:
+        assert [a["action_id"] for a in c.get("/v1/approvals",headers=headers("cfo")).json()["approvals"]]==[void_id]
+        assert c.post("/v1/approvals/"+void_id+"/decide",json={"decision":"approve_and_send"},headers=headers("commercial")).status_code==403
+        assert c.post("/v1/approvals/"+void_id+"/decide",json={"decision":"approve_and_send"},headers=headers("cfo")).json()["status"]=="ready"
+    assert worker.execute_one()
+    body=sent[0]["body"]
+    assert len(sent)==1 and body["action_type"]==VOID_KIND and body["payload"]=={"target_external_ref":"tvinsights:plan_request:1"}
+    assert body["fencing_token"]==4 and body["canonical_payload_hash"]==canonical_payload_hash(body["payload"])
+    with store.transaction() as s:
+        void,original=void_rows(s)
+        assert void.status=="confirmed" and void.callback_state=="pending"
+        assert original.status=="voided" and original.callback_state=="none" and original.receipt["document_state"]=="voided"
+        assert s.get(Record,("incident","financial-source-withdrawn:plan-void")).body["status"]=="resolved"
+    assert inspect(store)["checks"]["integration_source_withdrawals"]
+    assert worker.deliver_one()
+    receipt=receipts[0]
+    assert receipt["event_id"]=="plan-void" and receipt["source_revision"]=="r2" and receipt["document_state"]=="voided"
+    assert receipt["provider_reference"]=="INV-1" and receipt["amount_minor"]==0 and receipt["sequence"]==5
+    with store.transaction() as s:
+        void,original=void_rows(s)
+        assert void.status=="settled" and void.callback_state=="delivered"
+    # Finished business: no further ERP lookups, receipts or dispatches.
+    assert not worker.refresh_one() and not worker.execute_one() and not worker.deliver_one()
+    assert len(sent)==1 and len(receipts)==1
+    checks=inspect(store)["checks"]
+    assert checks["integration_action_failures"] and checks["integration_reconciliation_integrity"] and checks["pulzz_erp_receipt_delivery"]
+
+
+def test_void_refused_for_a_posted_invoice_blocks_instead_of_retrying(store,monkeypatch):
+    monkeypatch.setenv("PULZZ_URL","http://qa-product")
+    monkeypatch.setenv("MCS_PULZZ_RECEIPT_TOKEN","fixture-receipt-token-32-characters-minimum")
+    withdrawal=seed_voidable(store)
+    with store.transaction() as s:
+        void_id=void_rows(s)[0].action_id
+    with TestClient(create_app(store)) as c:
+        assert c.post("/v1/approvals/"+void_id+"/decide",json={"decision":"approve_and_send"},headers=headers("cfo")).status_code==200
+    worker=IntegrationWorker(store,httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,json={"payload":withdrawal}))))
+    calls=[]
+    def gateway(**kwargs):
+        calls.append(kwargs)
+        return {"operation_outcome":"not_applied","provider_reference":"INV-1","document_state":"submitted"}
+    monkeypatch.setattr(worker,"_gateway",gateway)
+    assert worker.execute_one()
+    with store.transaction() as s:
+        void,original=void_rows(s)
+        assert void.status=="blocked" and "submitted" in void.error and not void.reconcile_only
+        assert original.status=="confirmed" and original.receipt["document_state"]=="draft"
+        assert s.get(Record,("incident","financial-source-withdrawn:plan-void")).body["status"]=="open"
+    assert not worker.execute_one() and len(calls)==1
+    assert not inspect(store)["checks"]["integration_action_failures"]
+
+
+def test_withdrawal_of_a_posted_invoice_offers_no_void(store):
+    seed_voidable(store,state="submitted")
+    with store.transaction() as s:
+        void,original=void_rows(s)
+        assert void is None and original.status=="confirmed"
+        incident=s.get(Record,("incident","financial-source-withdrawn:plan-void")).body
+        assert incident["status"]=="open" and "void_action_id" not in incident
