@@ -74,6 +74,8 @@ def inspect(store, now=None, *, repair=True):
                 checks[name + "_authenticated_connectivity"] = bool(row and row.body.get("reachable") and now - row.updated_at < 120)
                 checks[name + "_workflow_consistency"] = bool(row and row.body.get("healthy") and now - row.updated_at < 120)
             checks["offhost_backup_fresh"] = backup_fresh(os.getenv("MCS_BACKUP_STATUS_FILE", "/var/lib/mcs-backup/status.json"), now)
+            from services.control.briefing import briefing_current
+            checks["morning_briefing_sent"] = briefing_current(store, now)
         if not repair:
             return {"status": "healthy" if all(checks.values()) else "degraded", "checks": checks, "observed_at": now}
         # Only unsent work is safely reclaimable without a provider lookup.
